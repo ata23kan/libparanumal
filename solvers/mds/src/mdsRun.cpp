@@ -62,9 +62,9 @@ void mds_t::Run(){
   //add standard boundary functions
   std::string boundaryHeaderFileName;
   if (mesh.dim==2)
-    boundaryHeaderFileName = std::string(DMDS "/data/ellipticBoundary2D.h");
+    boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary2D.h");
   else if (mesh.dim==3)
-    boundaryHeaderFileName = std::string(DMDS "/data/ellipticBoundary3D.h");
+    boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary3D.h");
   kernelInfo["includes"] += boundaryHeaderFileName;
 
   int Nmax = std::max(mesh.Np, mesh.Nfaces*mesh.Nfp);
@@ -80,25 +80,25 @@ void mds_t::Run(){
 
   std::string fileName, kernelName;
 
-  fileName   = oklFilePrefix + "ellipticRhs" + suffix + oklFileSuffix;
-  kernelName = "ellipticRhs" + suffix;
+  fileName   = oklFilePrefix + "mdsRhs" + suffix + oklFileSuffix;
+  kernelName = "mdsRhs" + suffix;
   kernel_t forcingKernel = platform.buildKernel(fileName, kernelName,
                                                     kernelInfo);
 
   kernel_t rhsBCKernel, addBCKernel;
   if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    fileName   = oklFilePrefix + "ellipticRhsBCIpdg" + suffix + oklFileSuffix;
-    kernelName = "ellipticRhsBCIpdg" + suffix;
+    fileName   = oklFilePrefix + "mdsRhsBCIpdg" + suffix + oklFileSuffix;
+    kernelName = "mdsRhsBCIpdg" + suffix;
 
     rhsBCKernel = platform.buildKernel(fileName,kernelName, kernelInfo);
   } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
-    fileName   = oklFilePrefix + "ellipticRhsBC" + suffix + oklFileSuffix;
-    kernelName = "ellipticRhsBC" + suffix;
+    fileName   = oklFilePrefix + "mdsRhsBC" + suffix + oklFileSuffix;
+    kernelName = "mdsRhsBC" + suffix;
 
     rhsBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
-    fileName   = oklFilePrefix + "ellipticAddBC" + suffix + oklFileSuffix;
-    kernelName = "ellipticAddBC" + suffix;
+    fileName   = oklFilePrefix + "mdsAddBC" + suffix + oklFileSuffix;
+    kernelName = "mdsAddBC" + suffix;
 
     addBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
   }
@@ -135,7 +135,7 @@ void mds_t::Run(){
                 o_rL);
 
   //Set x to zero
-  platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)1.0, o_xL);
+  platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xL);
 
   //add boundary condition contribution to rhs
   if (settings.compareSetting("DISCRETIZATION","IPDG")) {

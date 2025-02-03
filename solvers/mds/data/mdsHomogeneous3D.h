@@ -24,26 +24,21 @@ SOFTWARE.
 
 */
 
-#define PI 3.14159265358979323846
 
-/* forcing function   */
-#define mdsForcing2D(x, y, lambda, f)  \
-  {                                         \
-    f  = 0.0*x;   \
-  }
-
-/* Dirichlet boundary condition   */
-#define mdsDirichletCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
+/* Homogeneous Dirichlet boundary condition   */
+#define mdsDirichletCondition3D(x,y,z,nx,ny,nz,uM,uxM,uyM,uzM,uB,uxB,uyB,uzB)  \
   {              \
-    uB  = x;    \
+    uB  = 0.f;   \
     uxB = uxM;   \
     uyB = uyM;   \
+    uzB = uzM;   \
   }
 
-/* Neumann boundary condition   */
-#define mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
+/* Homogeneous Neumann boundary condition   */
+#define mdsNeumannCondition3D(x,y,z,nx,ny,nz,uM,uxM,uyM,uzM,uB,uxB,uyB,uzB)  \
   {              \
     uB  = uM;    \
-    uxB = -PI*cos(PI*x)*sin(PI*y);   \
-    uyB = -PI*sin(PI*x)*cos(PI*y);   \
+    uxB = 0.f;   \
+    uyB = 0.f;   \
+    uzB = 0.f;   \
   }

@@ -254,10 +254,10 @@ SEMFEMPrecon::SEMFEMPrecon(mds_t& _mds):
 
     kernelInfo["defines/" "dfloat"]= pfloatString;
 
-    SEMFEMInterpKernel = mds.platform.buildKernel(DMDS "/okl/ellipticSEMFEMInterp.okl",
-                                     "ellipticSEMFEMInterp", kernelInfo);
+    SEMFEMInterpKernel = mds.platform.buildKernel(DMDS "/okl/mdsSEMFEMInterp.okl",
+                                     "mdsSEMFEMInterp", kernelInfo);
 
-    SEMFEMAnterpKernel = mds.platform.buildKernel(DMDS "/okl/ellipticSEMFEMAnterp.okl",
-                                     "ellipticSEMFEMAnterp", kernelInfo);
+    SEMFEMAnterpKernel = mds.platform.buildKernel(DMDS "/okl/mdsSEMFEMAnterp.okl",
+                                     "mdsSEMFEMAnterp", kernelInfo);
   }
 }

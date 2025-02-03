@@ -24,26 +24,28 @@ SOFTWARE.
 
 */
 
-#define PI 3.14159265358979323846
+//spectral mass matrix
+@kernel void mdsRhsQuad2D(const dlong Nelements,
+                               @restrict const dfloat* wJ,
+                               @restrict const dfloat* MM,
+                               @restrict const dfloat* x,
+                               @restrict const dfloat* y,
+                               @restrict const dfloat* z,
+                                         const dfloat  lambda,
+                               @restrict       dfloat* rhs){
 
-/* forcing function   */
-#define mdsForcing2D(x, y, lambda, f)  \
-  {                                         \
-    f  = 0.0*x;   \
-  }
+  for(dlong e=0;e<Nelements;e++;@outer(0)){
 
-/* Dirichlet boundary condition   */
-#define mdsDirichletCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
-  {              \
-    uB  = x;    \
-    uxB = uxM;   \
-    uyB = uyM;   \
-  }
+    for(int n=0;n<p_Np;++n;@inner(0)){
 
-/* Neumann boundary condition   */
-#define mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
-  {              \
-    uB  = uM;    \
-    uxB = -PI*cos(PI*x)*sin(PI*y);   \
-    uyB = -PI*sin(PI*x)*cos(PI*y);   \
+      // assumes w*J built into G entries
+      const dlong id = e*p_Np + n;
+      const dfloat r_GwJ = wJ[id];
+
+      dfloat f = 0;
+      mdsForcing2D(x[id], y[id], lambda, f);
+
+      rhs[id] = r_GwJ*f;
+    }
   }
+}

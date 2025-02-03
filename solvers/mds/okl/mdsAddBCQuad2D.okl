@@ -24,26 +24,26 @@ SOFTWARE.
 
 */
 
-#define PI 3.14159265358979323846
+@kernel void mdsAddBCQuad2D(const int Nelements,
+                              @restrict const  dfloat *  x,
+                              @restrict const  dfloat *  y,
+                              @restrict const  dfloat *  z,
+                              @restrict const  int    *  mapB,
+                              @restrict dfloat  *  q){
 
-/* forcing function   */
-#define mdsForcing2D(x, y, lambda, f)  \
-  {                                         \
-    f  = 0.0*x;   \
-  }
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const int id = n+e*p_Np;
+      const int bc = mapB[n+e*p_Np];
 
-/* Dirichlet boundary condition   */
-#define mdsDirichletCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
-  {              \
-    uB  = x;    \
-    uxB = uxM;   \
-    uyB = uyM;   \
-  }
+      dfloat dudxP=0, dudyP=0, uP=0;
 
-/* Neumann boundary condition   */
-#define mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
-  {              \
-    uB  = uM;    \
-    uxB = -PI*cos(PI*x)*sin(PI*y);   \
-    uyB = -PI*sin(PI*x)*cos(PI*y);   \
+      if(bc==1) {
+        mdsBoundaryConditions2D(bc, x[id], y[id], 0.f, 0.f, \
+                                      0.f, 0.f, 0.f,                \
+                                      uP, dudxP, dudyP);
+        q[id] = uP;
+      }
+    }
   }
+}

@@ -94,9 +94,9 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   //add standard boundary functions
   std::string boundaryHeaderFileName;
   if (mesh.dim==2)
-    boundaryHeaderFileName = std::string(DMDS "/data/ellipticBoundary2D.h");
+    boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary2D.h");
   else if (mesh.dim==3)
-    boundaryHeaderFileName = std::string(DMDS "/data/ellipticBoundary3D.h");
+    boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary3D.h");
   kernelInfo["includes"] += boundaryHeaderFileName;
 
   int blockMax = 256;
@@ -115,15 +115,15 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   // Ax kernel
   if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
-    fileName   = oklFilePrefix + "ellipticAx" + suffix + oklFileSuffix;
+    fileName   = oklFilePrefix + "mdsAx" + suffix + oklFileSuffix;
     if(mesh.elementType==Mesh::HEXAHEDRA){
       if(mesh.settings.compareSetting("ELEMENT MAP", "TRILINEAR"))
-      kernelName = "ellipticPartialAxTrilinear" + suffix;
+      kernelName = "mdsPartialAxTrilinear" + suffix;
       else
-        kernelName = "ellipticPartialAx" + suffix;
+        kernelName = "mdsPartialAx" + suffix;
     } else{
-      kernelName = "ellipticPartialAx" + suffix;
-      kernelName2 = "ellipticAx" + suffix;
+      kernelName = "mdsPartialAx" + suffix;
+      kernelName2 = "mdsAx" + suffix;
     }
 
     partialAxKernel = platform.buildKernel(fileName, kernelName,
@@ -140,8 +140,8 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
     kernelInfoDouble["defines/" "p_Nmax"]= Nmax;
     kernelInfoFloat["defines/" "p_Nmax"]= Nmax;
 
-    fileName   = oklFilePrefix + "ellipticGradient" + suffix + oklFileSuffix;
-    kernelName = "ellipticPartialGradient" + suffix;
+    fileName   = oklFilePrefix + "mdsGradient" + suffix + oklFileSuffix;
+    kernelName = "mdsPartialGradient" + suffix;
     partialGradientKernel = platform.buildKernel(fileName, kernelName,
                                                   kernelInfoDouble);
 
@@ -149,8 +149,8 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
                                                       kernelInfoFloat);
 
 
-    fileName   = oklFilePrefix + "ellipticAxIpdg" + suffix + oklFileSuffix;
-    kernelName = "ellipticPartialAxIpdg" + suffix;
+    fileName   = oklFilePrefix + "mdsAxIpdg" + suffix + oklFileSuffix;
+    kernelName = "mdsPartialAxIpdg" + suffix;
 
     partialIpdgKernel = platform.buildKernel(fileName, kernelName,
                                              kernelInfoDouble);

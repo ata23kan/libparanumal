@@ -279,20 +279,20 @@ MGLevel::MGLevel(mds_t& _mds,
   kernelInfo["defines/" "p_NblockVCoarse"]= NblockVCoarse;
 
   if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-    fileName   = oklFilePrefix + "ellipticPreconCoarsen" + suffix + oklFileSuffix;
-    kernelName = "ellipticPartialPreconCoarsen" + suffix;
+    fileName   = oklFilePrefix + "mdsPreconCoarsen" + suffix + oklFileSuffix;
+    kernelName = "mdsPartialPreconCoarsen" + suffix;
     partialCoarsenKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
 
-    fileName   = oklFilePrefix + "ellipticPreconProlongate" + suffix + oklFileSuffix;
-    kernelName = "ellipticPartialPreconProlongate" + suffix;
+    fileName   = oklFilePrefix + "mdsPreconProlongate" + suffix + oklFileSuffix;
+    kernelName = "mdsPartialPreconProlongate" + suffix;
     partialProlongateKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
   } else { //IPDG
-    fileName   = oklFilePrefix + "ellipticPreconCoarsen" + suffix + oklFileSuffix;
-    kernelName = "ellipticPreconCoarsen" + suffix;
+    fileName   = oklFilePrefix + "mdsPreconCoarsen" + suffix + oklFileSuffix;
+    kernelName = "mdsPreconCoarsen" + suffix;
     coarsenKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
 
-    fileName   = oklFilePrefix + "ellipticPreconProlongate" + suffix + oklFileSuffix;
-    kernelName = "ellipticPreconProlongate" + suffix;
+    fileName   = oklFilePrefix + "mdsPreconProlongate" + suffix + oklFileSuffix;
+    kernelName = "mdsPreconProlongate" + suffix;
     prolongateKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
   }
 }
