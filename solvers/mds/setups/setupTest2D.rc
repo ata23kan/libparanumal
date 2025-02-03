@@ -7,6 +7,7 @@ data/mdsTest2D.h
 [MESH FILE]
 #BOX
 square_coarse.msh
+#square.msh
 
 [MESH DIMENSION]
 2
@@ -106,7 +107,7 @@ CHEBYSHEV
 TRUE
 
 [OUTPUT FILE NAME]
-elliptic_test
+mds_test
 
 [VERBOSE]
 TRUE

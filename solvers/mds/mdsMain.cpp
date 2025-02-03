@@ -60,11 +60,15 @@ int main(int argc, char **argv){
     mdsSettings.getSetting("LAMBDA", lambda);
 
     // Boundary Type translation. Just defaults.
-    int NBCTypes = 3;
-    memory<int> BCType(3);
+    int NBCTypes = 2;
+    memory<int> BCType(2);
     BCType[0] = 0;
     BCType[1] = 1;
-    BCType[2] = 2;
+    // int NBCTypes = 3;
+    // memory<int> BCType(3);
+    // BCType[0] = 0;
+    // BCType[1] = 1;
+    // BCType[2] = 2;
 
     // set up mds solver
     mds_t mds(platform, mesh, mdsSettings,

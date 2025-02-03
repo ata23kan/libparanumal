@@ -105,37 +105,46 @@ void mds_t::Run(){
 
   //create occa buffers
   dlong Nall = mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
-  memory<dfloat> rL(Nall);
-  memory<dfloat> xL(Nall);
-  deviceMemory<dfloat> o_rL = platform.malloc<dfloat>(Nall);
-  deviceMemory<dfloat> o_xL = platform.malloc<dfloat>(Nall);
+  memory<dfloat> ruL(Nall);
+  memory<dfloat> rvL(Nall);
+  memory<dfloat> xuL(Nall);
+  memory<dfloat> xvL(Nall);
+  deviceMemory<dfloat> o_ruL = platform.malloc<dfloat>(Nall);
+  deviceMemory<dfloat> o_rvL = platform.malloc<dfloat>(Nall);
+  deviceMemory<dfloat> o_xuL = platform.malloc<dfloat>(Nall);
+  deviceMemory<dfloat> o_xvL = platform.malloc<dfloat>(Nall);
 
-  deviceMemory<dfloat> o_r, o_x;
+  deviceMemory<dfloat> o_ru, o_rv, o_xu, o_xv;
   if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    o_r = o_rL;
-    o_x = o_xL;
+    o_ru = o_ruL;
+    o_rv = o_rvL;
+    o_xu = o_xuL;
+    o_xv = o_xvL;
   } else {
     dlong Ng = ogsMasked.Ngather;
     dlong Nghalo = gHalo.Nhalo;
     dlong Ngall = Ng + Nghalo;
-    o_r = platform.malloc<dfloat>(Ngall);
-    o_x = platform.malloc<dfloat>(Ngall);
+    o_ru = platform.malloc<dfloat>(Ngall);
+    o_rv = platform.malloc<dfloat>(Ngall);
+    o_xu = platform.malloc<dfloat>(Ngall);
+    o_xv = platform.malloc<dfloat>(Ngall);
   }
 
   mesh.MassMatrixKernelSetup(Nfields); // mass matrix operator
 
-  //populate rhs forcing
-  forcingKernel(mesh.Nelements,
-                mesh.o_wJ,
-                mesh.o_MM,
-                mesh.o_x,
-                mesh.o_y,
-                mesh.o_z,
-                lambda,
-                o_rL);
+  // //populate rhs forcing
+  // forcingKernel(mesh.Nelements,
+  //               mesh.o_wJ,
+  //               mesh.o_MM,
+  //               mesh.o_x,
+  //               mesh.o_y,
+  //               mesh.o_z,
+  //               lambda,
+  //               o_ruL);
 
   //Set x to zero
-  platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xL);
+  platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xuL);
+  platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xvL);
 
   //add boundary condition contribution to rhs
   if (settings.compareSetting("DISCRETIZATION","IPDG")) {
@@ -151,7 +160,7 @@ void mds_t::Run(){
                 mesh.o_D,
                 mesh.o_LIFT,
                 mesh.o_MM,
-                o_rL);
+                o_ruL);
   } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
     rhsBCKernel(mesh.Nelements,
                 mesh.o_wJ,
@@ -167,13 +176,16 @@ void mds_t::Run(){
                 mesh.o_y,
                 mesh.o_z,
                 o_mapB,
-                o_rL);
+                o_ruL,
+                o_rvL);
   }
 
   // gather rhs to globalDofs if c0
   if(settings.compareSetting("DISCRETIZATION","CONTINUOUS")){
-    ogsMasked.Gather(o_r, o_rL, 1, ogs::Add, ogs::Trans);
-    ogsMasked.Gather(o_x, o_xL, 1, ogs::Add, ogs::NoTrans);
+    ogsMasked.Gather(o_ru, o_ruL, 1, ogs::Add, ogs::Trans);
+    ogsMasked.Gather(o_rv, o_rvL, 1, ogs::Add, ogs::Trans);
+    ogsMasked.Gather(o_xu, o_xuL, 1, ogs::Add, ogs::NoTrans);
+    ogsMasked.Gather(o_xv, o_xvL, 1, ogs::Add, ogs::NoTrans);
   }
 
   int maxIter = 5000;
@@ -183,19 +195,22 @@ void mds_t::Run(){
 
   //call the solver
   dfloat tol = (sizeof(dfloat)==sizeof(double)) ? 1.0e-8 : 1.0e-5;
-  int iter = Solve(linearSolver, o_x, o_r, tol, maxIter, verbose);
+  int iter_u = Solve(linearSolver, o_xu, o_ru, tol, maxIter, verbose);
+  int iter_v = Solve(linearSolver, o_xv, o_rv, tol, maxIter, verbose);
 
   //add the boundary data to the masked nodes
   if(settings.compareSetting("DISCRETIZATION","CONTINUOUS")){
     // scatter x to LocalDofs if c0
-    ogsMasked.Scatter(o_xL, o_x, 1, ogs::NoTrans);
+    ogsMasked.Scatter(o_xuL, o_xu, 1, ogs::NoTrans);
+    ogsMasked.Scatter(o_xvL, o_xv, 1, ogs::NoTrans);
     //fill masked nodes with BC data
     addBCKernel(mesh.Nelements,
                 mesh.o_x,
                 mesh.o_y,
                 mesh.o_z,
                 o_mapB,
-                o_xL);
+                o_xuL,
+                o_xvL);
   }
 
   timePoint_t end = GlobalPlatformTime(platform);
@@ -206,24 +221,27 @@ void mds_t::Run(){
            mesh.N,
            NglobalDofs,
            elapsedTime,
-           iter,
+           iter_u,
            elapsedTime/(NglobalDofs),
-           NglobalDofs*((dfloat)iter/elapsedTime),
+           NglobalDofs*((dfloat)iter_u/elapsedTime),
            (char*) settings.getSetting("PRECONDITIONER").c_str());
   }
 
   if (settings.compareSetting("OUTPUT TO FILE","TRUE")) {
 
     // copy data back to host
-    o_xL.copyTo(xL);
+    o_xuL.copyTo(xuL);
+    o_xvL.copyTo(xvL);
 
     // output field files
     std::string name;
     settings.getSetting("OUTPUT FILE NAME", name);
     char fname[BUFSIZ];
-    sprintf(fname, "%s_%04d.vtu", name.c_str(), mesh.rank);
+    sprintf(fname, "%su_%04d.vtu", name.c_str(), mesh.rank);
+    PlotFields(xuL, fname);
 
-    PlotFields(xL, fname);
+    sprintf(fname, "%sv_%04d.vtu", name.c_str(), mesh.rank);
+    PlotFields(xvL, fname);
   }
 
   // output norm of final solution
@@ -231,9 +249,9 @@ void mds_t::Run(){
     //compute q.M*q
     dlong Nentries = mesh.Nelements*mesh.Np*Nfields;
     deviceMemory<dfloat> o_MxL = platform.reserve<dfloat>(Nentries);
-    mesh.MassMatrixApply(o_xL, o_MxL);
+    mesh.MassMatrixApply(o_xuL, o_MxL);
 
-    dfloat norm2 = sqrt(platform.linAlg().innerProd(Nentries, o_xL, o_MxL, mesh.comm));
+    dfloat norm2 = sqrt(platform.linAlg().innerProd(Nentries, o_xuL, o_MxL, mesh.comm));
 
     if(mesh.rank==0)
       printf("Solution norm = %17.15lg\n", norm2);

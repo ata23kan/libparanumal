@@ -26,7 +26,7 @@ SOFTWARE.
 
 
 /* Homogeneous Dirichlet boundary condition   */
-#define mdsDirichletCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
+#define mdsDirichletCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,vB,uxB,uyB)  \
   {              \
     uB  = 0.f;   \
     uxB = uxM;   \
@@ -34,7 +34,7 @@ SOFTWARE.
   }
 
 /* Homogeneous Neumann boundary condition   */
-#define mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
+#define mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,vB,uxB,uyB)  \
   {              \
     uB  = uM;    \
     uxB = 0.f;   \

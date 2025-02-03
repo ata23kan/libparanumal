@@ -30,8 +30,8 @@ SOFTWARE.
 void mds_t::BoundarySetup(){
 
   //check all the bounaries for a Dirichlet
-  allNeumann = (lambda==0) ? 1 : 0; //if lambda>0 we don't care about all Neumann problem
-  allNeumannPenalty = 1.;
+  // allNeumann = (lambda==0) ? 1 : 0; //if lambda>0 we don't care about all Neumann problem
+  // allNeumannPenalty = 1.;
 
   //translate the mesh's element-to-boundaryflag mapping
   EToB.malloc(mesh.Nelements*mesh.Nfaces, 0);
@@ -41,14 +41,14 @@ void mds_t::BoundarySetup(){
       if (bc>0) {
         int BC = BCType[bc];         //translate mesh's boundary flag
         EToB[e*mesh.Nfaces+f] = BC;  //record it
-        if (BC!=2) allNeumann = 0;   //check if its a Dirchlet
+        // if (BC!=2) allNeumann = 0;   //check if its a Dirchlet
       }
     }
   }
   o_EToB = platform.malloc<int>(EToB);
 
-  //collect the allNeumann flags from other ranks
-  mesh.comm.Allreduce(allNeumann, Comm::Min);
+  // //collect the allNeumann flags from other ranks
+  // mesh.comm.Allreduce(allNeumann, Comm::Min);
 
   //translate the mesh's node-wise bc flag
   Nmasked = 0;
@@ -85,13 +85,13 @@ void mds_t::BoundarySetup(){
                   mesh.comm, ogs::Signed, ogs::Auto,
                   unique, verbose, platform);
 
-  //setup normalization constant
-  if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    allNeumannScale = 1./sqrt((dfloat)mesh.Np*mesh.NelementsGlobal);
-  } else {
-    //note that we can use the mesh ogs, since there are no masked nodes
-    allNeumannScale = 1./sqrt((dfloat)ogsMasked.NgatherGlobal);
-  }
+  // //setup normalization constant
+  // if (settings.compareSetting("DISCRETIZATION","IPDG")) {
+  //   allNeumannScale = 1./sqrt((dfloat)mesh.Np*mesh.NelementsGlobal);
+  // } else {
+  //   //note that we can use the mesh ogs, since there are no masked nodes
+  //   allNeumannScale = 1./sqrt((dfloat)ogsMasked.NgatherGlobal);
+  // }
 
   /* use the masked gs handle to define a global ordering */
   dlong Ntotal  = mesh.Np*mesh.Nelements; // number of degrees of freedom on this rank (before gathering)
@@ -130,6 +130,7 @@ void mds_t::BoundarySetup(){
   //scatter this numbering to the original nodes
   maskedGlobalNumbering.malloc(Ntotal, -1);
   ogsMasked.Scatter(maskedGlobalNumbering, globalIds, 1, ogs::NoTrans);
+
 
   /* Build halo exchange for gathered ordering */
   gHalo.SetupFromGather(ogsMasked);

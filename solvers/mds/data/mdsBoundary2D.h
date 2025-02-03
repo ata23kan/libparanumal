@@ -25,12 +25,12 @@ SOFTWARE.
 */
 
 /* Dirichlet 1, Neumann 2, Robin 3 (defaulted to Neumann for now) */
-#define mdsBoundaryConditions2D(bc,x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
+#define mdsBoundaryConditions2D(bc,x,y,uB,vB)  \
   {                 \
-    if     (bc==1) mdsDirichletCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB) \
-    else if(bc==2) mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
-    else           mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,uxB,uyB)  \
+    if     (bc==1) mdsDirichletCondition2D(x,y,uB,vB) \
   }
+    // else if(bc==2) mdsNeumannCondition2D(x,y,uB,vB)  \
+    // else           mdsNeumannCondition2D(x,y,uB,vB)  \
 
 
 /*-----------------------------------------------------------------------------------------------*/
@@ -38,7 +38,7 @@ SOFTWARE.
 /*-----------------------------------------------------------------------------------------------*/
 
 /* Homogeneous Dirichlet boundary condition   */
-#define mdsHomogeneousDirichlet2D(uM,uxM,uyM,uB,uxB,uyB)  \
+#define mdsHomogeneousDirichlet2D(uM,uxM,uyM,uB,vB,uxB,uyB)  \
   {              \
     uB  = 0.f;   \
     uxB = uxM;   \
@@ -46,7 +46,7 @@ SOFTWARE.
   }
 
 /* Homogeneous Neumann boundary condition   */
-#define mdsHomogeneousNeumann2D(uM,uxM,uyM,uB,uxB,uyB)  \
+#define mdsHomogeneousNeumann2D(uM,uxM,uyM,uB,vB,uxB,uyB)  \
   {              \
     uB = uM;     \
     uxB = 0.f;   \
@@ -54,10 +54,10 @@ SOFTWARE.
   }
 
 /* Dirichlet 1, Neumann 2, Robin 3 (defaulted to Neumann for now) */
-#define mdsHomogeneousBC2D(bc,uM,uxM,uyM,uB,uxB,uyB)  \
+#define mdsHomogeneousBC2D(bc,uM,uxM,uyM,uB,vB,uxB,uyB)  \
   {                 \
-    if     (bc==1) mdsHomogeneousDirichlet2D(uM,uxM,uyM,uB,uxB,uyB) \
-    else if(bc==2) mdsHomogeneousNeumann2D(uM,uxM,uyM,uB,uxB,uyB)  \
-    else           mdsHomogeneousNeumann2D(uM,uxM,uyM,uB,uxB,uyB)  \
+    if     (bc==1) mdsHomogeneousDirichlet2D(uM,uxM,uyM,uB,vB,uxB,uyB) \
+    else if(bc==2) mdsHomogeneousNeumann2D(uM,uxM,uyM,uB,vB,uxB,uyB)  \
+    else           mdsHomogeneousNeumann2D(uM,uxM,uyM,uB,vB,uxB,uyB)  \
   }
 
