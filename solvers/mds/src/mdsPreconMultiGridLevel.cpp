@@ -278,23 +278,13 @@ MGLevel::MGLevel(mds_t& _mds,
   kernelInfo["defines/" "p_NblockVFine"]= NblockVFine;
   kernelInfo["defines/" "p_NblockVCoarse"]= NblockVCoarse;
 
-  if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-    fileName   = oklFilePrefix + "mdsPreconCoarsen" + suffix + oklFileSuffix;
-    kernelName = "mdsPartialPreconCoarsen" + suffix;
-    partialCoarsenKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
+  fileName   = oklFilePrefix + "mdsPreconCoarsen" + suffix + oklFileSuffix;
+  kernelName = "mdsPartialPreconCoarsen" + suffix;
+  partialCoarsenKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
 
-    fileName   = oklFilePrefix + "mdsPreconProlongate" + suffix + oklFileSuffix;
-    kernelName = "mdsPartialPreconProlongate" + suffix;
-    partialProlongateKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
-  } else { //IPDG
-    fileName   = oklFilePrefix + "mdsPreconCoarsen" + suffix + oklFileSuffix;
-    kernelName = "mdsPreconCoarsen" + suffix;
-    coarsenKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
-
-    fileName   = oklFilePrefix + "mdsPreconProlongate" + suffix + oklFileSuffix;
-    kernelName = "mdsPreconProlongate" + suffix;
-    prolongateKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
-  }
+  fileName   = oklFilePrefix + "mdsPreconProlongate" + suffix + oklFileSuffix;
+  kernelName = "mdsPartialPreconProlongate" + suffix;
+  partialProlongateKernel = mds.platform.buildKernel(fileName, kernelName, kernelInfo);
 }
 
 size_t MGLevel::SmootherScratchSize() {
@@ -308,12 +298,7 @@ size_t MGLevel::SmootherScratchSize() {
   }
 
   // Add some space for scratch usage in mds operator
-  if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-    Nentries += mesh.Np*mesh.Nelements + platform.memPoolAlignment<pfloat>();
-  } else { //IPDG
-    dlong Ntotal = mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
-    Nentries += 4*Ntotal + platform.memPoolAlignment<pfloat>();
-  }
+  Nentries += mesh.Np*mesh.Nelements + platform.memPoolAlignment<pfloat>();
   return Nentries;
 }
 

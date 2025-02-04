@@ -113,10 +113,7 @@ MultiGridPrecon::MultiGridPrecon(mds_t& _mds):
     printf("-----------------------------Multigrid AMG Setup--------------------------------------------\n");
   }
   parAlmond::parCOO A(mds.platform, mesh.comm);
-  if (settings.compareSetting("DISCRETIZATION", "IPDG"))
-    mdsF.BuildOperatorMatrixIpdg(A);
-  else if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS"))
-    mdsF.BuildOperatorMatrixContinuous(A);
+  mdsF.BuildOperatorMatrixContinuous(A);
 
   //populate null space unit vector
   int rank = mesh.rank;

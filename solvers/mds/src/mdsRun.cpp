@@ -86,22 +86,24 @@ void mds_t::Run(){
                                                     kernelInfo);
 
   kernel_t rhsBCKernel, addBCKernel;
-  if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    fileName   = oklFilePrefix + "mdsRhsBCIpdg" + suffix + oklFileSuffix;
-    kernelName = "mdsRhsBCIpdg" + suffix;
+  // if (settings.compareSetting("DISCRETIZATION","IPDG")) {
+  //   fileName   = oklFilePrefix + "mdsRhsBCIpdg" + suffix + oklFileSuffix;
+  //   kernelName = "mdsRhsBCIpdg" + suffix;
 
-    rhsBCKernel = platform.buildKernel(fileName,kernelName, kernelInfo);
-  } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
-    fileName   = oklFilePrefix + "mdsRhsBC" + suffix + oklFileSuffix;
-    kernelName = "mdsRhsBC" + suffix;
+  //   rhsBCKernel = platform.buildKernel(fileName,kernelName, kernelInfo);
+  // } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
 
-    rhsBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+  fileName   = oklFilePrefix + "mdsRhsBC" + suffix + oklFileSuffix;
+  kernelName = "mdsRhsBC" + suffix;
 
-    fileName   = oklFilePrefix + "mdsAddBC" + suffix + oklFileSuffix;
-    kernelName = "mdsAddBC" + suffix;
+  rhsBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
-    addBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
-  }
+  fileName   = oklFilePrefix + "mdsAddBC" + suffix + oklFileSuffix;
+  kernelName = "mdsAddBC" + suffix;
+
+  addBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  // }
 
   //create occa buffers
   dlong Nall = mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
@@ -115,20 +117,21 @@ void mds_t::Run(){
   deviceMemory<dfloat> o_xvL = platform.malloc<dfloat>(Nall);
 
   deviceMemory<dfloat> o_ru, o_rv, o_xu, o_xv;
-  if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    o_ru = o_ruL;
-    o_rv = o_rvL;
-    o_xu = o_xuL;
-    o_xv = o_xvL;
-  } else {
-    dlong Ng = ogsMasked.Ngather;
-    dlong Nghalo = gHalo.Nhalo;
-    dlong Ngall = Ng + Nghalo;
-    o_ru = platform.malloc<dfloat>(Ngall);
-    o_rv = platform.malloc<dfloat>(Ngall);
-    o_xu = platform.malloc<dfloat>(Ngall);
-    o_xv = platform.malloc<dfloat>(Ngall);
-  }
+  // if (settings.compareSetting("DISCRETIZATION","IPDG")) {
+  //   o_ru = o_ruL;
+  //   o_rv = o_rvL;
+  //   o_xu = o_xuL;
+  //   o_xv = o_xvL;
+  // } 
+  // else {
+  dlong Ng = ogsMasked.Ngather;
+  dlong Nghalo = gHalo.Nhalo;
+  dlong Ngall = Ng + Nghalo;
+  o_ru = platform.malloc<dfloat>(Ngall);
+  o_rv = platform.malloc<dfloat>(Ngall);
+  o_xu = platform.malloc<dfloat>(Ngall);
+  o_xv = platform.malloc<dfloat>(Ngall);
+  // }
 
   mesh.MassMatrixKernelSetup(Nfields); // mass matrix operator
 
@@ -147,38 +150,38 @@ void mds_t::Run(){
   platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xvL);
 
   //add boundary condition contribution to rhs
-  if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    rhsBCKernel(mesh.Nelements,
-                mesh.o_vmapM,
-                tau,
-                mesh.o_x,
-                mesh.o_y,
-                mesh.o_z,
-                mesh.o_vgeo,
-                mesh.o_sgeo,
-                o_EToB,
-                mesh.o_D,
-                mesh.o_LIFT,
-                mesh.o_MM,
-                o_ruL);
-  } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
-    rhsBCKernel(mesh.Nelements,
-                mesh.o_wJ,
-                mesh.o_ggeo,
-                mesh.o_sgeo,
-                mesh.o_D,
-                mesh.o_S,
-                mesh.o_MM,
-                mesh.o_vmapM,
-                mesh.o_sM,
-                lambda,
-                mesh.o_x,
-                mesh.o_y,
-                mesh.o_z,
-                o_mapB,
-                o_ruL,
-                o_rvL);
-  }
+  // if (settings.comparesetting("DISCRETIZATION","IPDG")) {
+  //   rhsBCKernel(mesh.Nelements,
+  //               mesh.o_vmapM,
+  //               tau,
+  //               mesh.o_x,
+  //               mesh.o_y,
+  //               mesh.o_z,
+  //               mesh.o_vgeo,
+  //               mesh.o_sgeo,
+  //               o_EToB,
+  //               mesh.o_D,
+  //               mesh.o_LIFT,
+  //               mesh.o_MM,
+  //               o_ruL);
+  // } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
+  rhsBCKernel(mesh.Nelements,
+              mesh.o_wJ,
+              mesh.o_ggeo,
+              mesh.o_sgeo,
+              mesh.o_D,
+              mesh.o_S,
+              mesh.o_MM,
+              mesh.o_vmapM,
+              mesh.o_sM,
+              lambda,
+              mesh.o_x,
+              mesh.o_y,
+              mesh.o_z,
+              o_mapB,
+              o_ruL,
+              o_rvL);
+  // }
 
   // gather rhs to globalDofs if c0
   if(settings.compareSetting("DISCRETIZATION","CONTINUOUS")){
@@ -237,10 +240,10 @@ void mds_t::Run(){
     std::string name;
     settings.getSetting("OUTPUT FILE NAME", name);
     char fname[BUFSIZ];
-    sprintf(fname, "%su_%04d.vtu", name.c_str(), mesh.rank);
+    sprintf(fname, "%s_u_%04d.vtu", name.c_str(), mesh.rank);
     PlotFields(xuL, fname);
 
-    sprintf(fname, "%sv_%04d.vtu", name.c_str(), mesh.rank);
+    sprintf(fname, "%s_v_%04d.vtu", name.c_str(), mesh.rank);
     PlotFields(xvL, fname);
   }
 

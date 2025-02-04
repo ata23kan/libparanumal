@@ -49,13 +49,8 @@ MassMatrixPrecon::MassMatrixPrecon(mds_t& _mds):
   kernelInfo["defines/" "p_NblockV"]= NblockV;
   kernelInfo["defines/" "dfloat"]= pfloatString;
 
-  if (settings.compareSetting("DISCRETIZATION", "IPDG")) {
-    blockJacobiKernel = mds.platform.buildKernel(DMDS "/okl/mdsPreconBlockJacobi.okl",
-                                     "blockJacobi", kernelInfo);
-  } else if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-    partialBlockJacobiKernel = mds.platform.buildKernel(DMDS "/okl/mdsPreconBlockJacobi.okl",
-                                     "partialBlockJacobi", kernelInfo);
-  }
+  partialBlockJacobiKernel = mds.platform.buildKernel(DMDS "/okl/mdsPreconBlockJacobi.okl",
+                                   "partialBlockJacobi", kernelInfo);
 }
 
 void MassMatrixPrecon::Operator(deviceMemory<pfloat>& o_r, deviceMemory<pfloat>& o_Mr) {
@@ -66,54 +61,45 @@ void MassMatrixPrecon::Operator(deviceMemory<pfloat>& o_r, deviceMemory<pfloat>&
   
   linAlg_t& linAlg = mds.platform.linAlg();
 
-  if (mds.disc_c0) {//C0
-    dlong Ntotal = mds.ogsMasked.Ngather + mds.gHalo.Nhalo;
-    deviceMemory<pfloat> o_rtmp = mds.platform.reserve<pfloat>(Ntotal);
-    deviceMemory<pfloat> o_MrL  = mds.platform.reserve<pfloat>(mesh.Np*mesh.Nelements);
+  dlong Ntotal = mds.ogsMasked.Ngather + mds.gHalo.Nhalo;
+  deviceMemory<pfloat> o_rtmp = mds.platform.reserve<pfloat>(Ntotal);
+  deviceMemory<pfloat> o_MrL  = mds.platform.reserve<pfloat>(mesh.Np*mesh.Nelements);
 
-    // rtmp = invDegree.*r
-    linAlg.amxpy(mds.Ndofs, one, mds.o_weightG, o_r, zero, o_rtmp);
+  // rtmp = invDegree.*r
+  linAlg.amxpy(mds.Ndofs, one, mds.o_weightG, o_r, zero, o_rtmp);
 
-    mds.gHalo.ExchangeStart(o_rtmp, 1);
+  mds.gHalo.ExchangeStart(o_rtmp, 1);
 
-    if(mesh.NlocalGatherElements/2)
-      partialBlockJacobiKernel(mesh.NlocalGatherElements/2,
-                               mesh.o_localGatherElementList,
-                               mds.o_GlobalToLocal,
-                               invLambda, mesh.o_pfloat_vgeo, o_pfloat_invMM,
-                               o_rtmp, o_MrL);
+  if(mesh.NlocalGatherElements/2)
+    partialBlockJacobiKernel(mesh.NlocalGatherElements/2,
+                             mesh.o_localGatherElementList,
+                             mds.o_GlobalToLocal,
+                             invLambda, mesh.o_pfloat_vgeo, o_pfloat_invMM,
+                             o_rtmp, o_MrL);
 
-    // finalize halo exchange
-    mds.gHalo.ExchangeFinish(o_rtmp, 1);
+  // finalize halo exchange
+  mds.gHalo.ExchangeFinish(o_rtmp, 1);
 
-    if(mesh.NglobalGatherElements)
-      partialBlockJacobiKernel(mesh.NglobalGatherElements,
-                               mesh.o_globalGatherElementList,
-                               mds.o_GlobalToLocal,
-                               invLambda, mesh.o_pfloat_vgeo, o_pfloat_invMM,
-                               o_rtmp, o_MrL);
+  if(mesh.NglobalGatherElements)
+    partialBlockJacobiKernel(mesh.NglobalGatherElements,
+                             mesh.o_globalGatherElementList,
+                             mds.o_GlobalToLocal,
+                             invLambda, mesh.o_pfloat_vgeo, o_pfloat_invMM,
+                             o_rtmp, o_MrL);
 
-    //gather result to Aq
-    mds.ogsMasked.GatherStart(o_Mr, o_MrL, 1, ogs::Add, ogs::Trans);
+  //gather result to Aq
+  mds.ogsMasked.GatherStart(o_Mr, o_MrL, 1, ogs::Add, ogs::Trans);
 
-    if((mesh.NlocalGatherElements+1)/2){
-      partialBlockJacobiKernel((mesh.NlocalGatherElements+1)/2,
-                               mesh.o_localGatherElementList+mesh.NlocalGatherElements/2,
-                               mds.o_GlobalToLocal,
-                               invLambda, mesh.o_pfloat_vgeo, o_pfloat_invMM,
-                               o_rtmp, o_MrL);
-    }
-
-    mds.ogsMasked.GatherFinish(o_Mr, o_MrL, 1, ogs::Add, ogs::Trans);
-
-    // Mr = invDegree.*Mr
-    linAlg.amx(mds.Ndofs, one, mds.o_weightG, o_Mr);
-
-  } else {
-    //IPDG
-    blockJacobiKernel(mesh.Nelements, invLambda, mesh.o_pfloat_vgeo, o_pfloat_invMM, o_r, o_Mr);
+  if((mesh.NlocalGatherElements+1)/2){
+    partialBlockJacobiKernel((mesh.NlocalGatherElements+1)/2,
+                             mesh.o_localGatherElementList+mesh.NlocalGatherElements/2,
+                             mds.o_GlobalToLocal,
+                             invLambda, mesh.o_pfloat_vgeo, o_pfloat_invMM,
+                             o_rtmp, o_MrL);
   }
 
-  // zero mean of RHS
-  if(mds.allNeumann) mds.ZeroMean(o_Mr);
+  mds.ogsMasked.GatherFinish(o_Mr, o_MrL, 1, ogs::Add, ogs::Trans);
+
+  // Mr = invDegree.*Mr
+  linAlg.amx(mds.Ndofs, one, mds.o_weightG, o_Mr);
 }

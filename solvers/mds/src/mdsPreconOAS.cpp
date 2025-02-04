@@ -122,31 +122,25 @@ OASPrecon::OASPrecon(mds_t& _mds):
     for (int i=0;i<meshPatch.Nelements*meshPatch.Np;i++)
       patchWeight[i] = 1.0;
 
-    if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-      //share the masked version of the global id numbering
-      memory<hlong> maskedRingGlobalIds(meshPatch.Nelements*meshPatch.Np);
-      maskedRingGlobalIds.copyFrom(mds.maskedGlobalIds, mesh.Nelements*mesh.Np);
-      mesh.ringHalo.Exchange(maskedRingGlobalIds, mesh.Np);
+    //share the masked version of the global id numbering
+    memory<hlong> maskedRingGlobalIds(meshPatch.Nelements*meshPatch.Np);
+    maskedRingGlobalIds.copyFrom(mds.maskedGlobalIds, mesh.Nelements*mesh.Np);
+    mesh.ringHalo.Exchange(maskedRingGlobalIds, mesh.Np);
 
-      //mask ring
-      for (dlong n=0;n<mdsPatch.Nmasked;n++)
-        maskedRingGlobalIds[mdsPatch.maskIds[n]] = 0;
+    //mask ring
+    for (dlong n=0;n<mdsPatch.Nmasked;n++)
+      maskedRingGlobalIds[mdsPatch.maskIds[n]] = 0;
 
-      //use the masked ids to make another gs handle
-      int verbose = 0;
-      bool unique = true; //flag a unique node in every gather node
-      ogsMaskedRing.Setup(meshPatch.Nelements*meshPatch.Np,
-                          maskedRingGlobalIds, mesh.comm,
-                          ogs::Signed, ogs::Auto,
-                          unique, verbose, mds.platform);
+    //use the masked ids to make another gs handle
+    int verbose = 0;
+    bool unique = true; //flag a unique node in every gather node
+    ogsMaskedRing.Setup(meshPatch.Nelements*meshPatch.Np,
+                        maskedRingGlobalIds, mesh.comm,
+                        ogs::Signed, ogs::Auto,
+                        unique, verbose, mds.platform);
 
-      //determine overlap of each node with masked ogs
-      ogsMaskedRing.GatherScatter(patchWeight, 1, ogs::Add, ogs::Sym);
-
-    } else {
-      //determine overlap by combining halos
-      mesh.ringHalo.Combine(patchWeight, mesh.Np);
-    }
+    //determine overlap of each node with masked ogs
+    ogsMaskedRing.GatherScatter(patchWeight, 1, ogs::Add, ogs::Sym);
 
     //invert
     for (int i=0;i<meshPatch.Nelements*meshPatch.Np;i++)
@@ -178,10 +172,7 @@ OASPrecon::OASPrecon(mds_t& _mds):
     printf("-----------------------------Multigrid AMG Setup--------------------------------------------\n");
   }
   parAlmond::parCOO A(mds.platform, meshC.comm);
-  if (settings.compareSetting("DISCRETIZATION", "IPDG"))
-    mdsC.BuildOperatorMatrixIpdg(A);
-  else if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS"))
-    mdsC.BuildOperatorMatrixContinuous(A);
+  mdsC.BuildOperatorMatrixContinuous(A);
 
   //populate null space unit vector
   int rank = meshC.rank;
@@ -199,13 +190,8 @@ OASPrecon::OASPrecon(mds_t& _mds):
   if (mesh.N>1) {
     //make an MG level to get prologation and coarsener
     dlong Nrows, Ncols;
-    if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-      Nrows = mds.ogsMasked.Ngather;
-      Ncols = Nrows + mds.gHalo.Nhalo;
-    } else {
-      Nrows = mesh.Nelements*mesh.Np;
-      Ncols = Nrows + mesh.totalHaloPairs*mesh.Np;
-    }
+    Nrows = mds.ogsMasked.Ngather;
+    Ncols = Nrows + mds.gHalo.Nhalo;
 
     level = MGLevel(mds, Nrows, Ncols, Nc, NpCoarse);
     level.meshC = meshC;

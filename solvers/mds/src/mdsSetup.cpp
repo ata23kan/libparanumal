@@ -43,9 +43,6 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   ogs::InitializeKernels(platform, ogs::Dfloat, ogs::Add);
   ogs::InitializeKernels(platform, ogs::Pfloat, ogs::Add);
 
-  disc_ipdg = settings.compareSetting("DISCRETIZATION","IPDG");
-  disc_c0   = settings.compareSetting("DISCRETIZATION","CONTINUOUS");
-
   //setup linear algebra module
   platform.linAlg().InitKernels({"add", "sum", "scale",
         "axpy", "zaxpy",
@@ -65,21 +62,6 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   //setup boundary flags and make mask and masked ogs
   BoundarySetup();
 
-  if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    //tau (penalty term in IPDG)
-    if (mesh.elementType==Mesh::TRIANGLES ||
-        mesh.elementType==Mesh::QUADRILATERALS){
-      tau = 2.0*(mesh.N+1)*(mesh.N+2)/2.0;
-      if(mesh.dim==3) {
-        tau *= 1.5;
-      }
-    } else {
-      tau = 2.0*(mesh.N+1)*(mesh.N+3);
-    }
-  } else {
-    tau = 0.0;
-  }
-
   // OCCA build stuff
   properties_t kernelInfo = mesh.props; //copy base occa properties
 
@@ -89,7 +71,7 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   std::string oklFilePrefix = DMDS "/okl/";
   std::string oklFileSuffix = ".okl";
 
-  std::string fileName, kernelName, kernelName2;
+  std::string fileName, kernelName;
 
   //add standard boundary functions
   std::string boundaryHeaderFileName;
@@ -123,50 +105,49 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
         kernelName = "mdsPartialAx" + suffix;
     } else{
       kernelName = "mdsPartialAx" + suffix;
-      kernelName2 = "mdsAx" + suffix;
     }
 
     partialAxKernel = platform.buildKernel(fileName, kernelName,
                                            kernelInfoDouble);
 
-    // // kernel_t AxKernel;
-    // AxKernel = platform.buildKernel(fileName, kernelName2, kernelInfoDouble);
 
     floatPartialAxKernel = platform.buildKernel(fileName, kernelName,
                                                 kernelInfoFloat);
-
-  } else if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-    int Nmax = std::max(mesh.Np, mesh.Nfaces*mesh.Nfp);
-    kernelInfoDouble["defines/" "p_Nmax"]= Nmax;
-    kernelInfoFloat["defines/" "p_Nmax"]= Nmax;
-
-    fileName   = oklFilePrefix + "mdsGradient" + suffix + oklFileSuffix;
-    kernelName = "mdsPartialGradient" + suffix;
-    partialGradientKernel = platform.buildKernel(fileName, kernelName,
-                                                  kernelInfoDouble);
-
-    floatPartialGradientKernel = platform.buildKernel(fileName, kernelName,
-                                                      kernelInfoFloat);
-
-
-    fileName   = oklFilePrefix + "mdsAxIpdg" + suffix + oklFileSuffix;
-    kernelName = "mdsPartialAxIpdg" + suffix;
-
-    partialIpdgKernel = platform.buildKernel(fileName, kernelName,
-                                             kernelInfoDouble);
-
-    floatPartialIpdgKernel = platform.buildKernel(fileName, kernelName,
-                                                  kernelInfoFloat);
   }
+
+  // } else if (settings.compareSetting("DISCRETIZATION","IPDG")) {
+  //   int Nmax = std::max(mesh.Np, mesh.Nfaces*mesh.Nfp);
+  //   kernelInfoDouble["defines/" "p_Nmax"]= Nmax;
+  //   kernelInfoFloat["defines/" "p_Nmax"]= Nmax;
+
+  //   fileName   = oklFilePrefix + "mdsGradient" + suffix + oklFileSuffix;
+  //   kernelName = "mdsPartialGradient" + suffix;
+  //   partialGradientKernel = platform.buildKernel(fileName, kernelName,
+  //                                                 kernelInfoDouble);
+
+  //   floatPartialGradientKernel = platform.buildKernel(fileName, kernelName,
+  //                                                     kernelInfoFloat);
+
+
+  //   fileName   = oklFilePrefix + "mdsAxIpdg" + suffix + oklFileSuffix;
+  //   kernelName = "mdsPartialAxIpdg" + suffix;
+
+  //   partialIpdgKernel = platform.buildKernel(fileName, kernelName,
+  //                                            kernelInfoDouble);
+
+  //   floatPartialIpdgKernel = platform.buildKernel(fileName, kernelName,
+  //                                                 kernelInfoFloat);
+  // }
 
   /* Preconditioner Setup */
-  if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-    Ndofs = ogsMasked.Ngather*Nfields;
-    Nhalo = gHalo.Nhalo*Nfields;
-  } else {
-    Ndofs = mesh.Nelements*mesh.Np*Nfields;
-    Nhalo = mesh.totalHaloPairs*mesh.Np*Nfields;
-  }
+  // if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
+  Ndofs = ogsMasked.Ngather*Nfields;
+  Nhalo = gHalo.Nhalo*Nfields;
+  // } 
+  // else {
+  //   Ndofs = mesh.Nelements*mesh.Np*Nfields;
+  //   Nhalo = mesh.totalHaloPairs*mesh.Np*Nfields;
+  // }
 
   if (settings.compareSetting("PRECONDITIONER", "JACOBI"))
     precon.Setup<JacobiPrecon>(*this);

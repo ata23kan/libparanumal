@@ -44,11 +44,7 @@ mds_t mds_t::SetupRingPatch(mesh_t& meshPatch){
   //setup boundary flags and make mask and masked ogs
   mds.BoundarySetup();
 
-  if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-    mds.Ndofs = mds.ogsMasked.Ngather*Nfields;
-  } else {
-    mds.Ndofs = meshPatch.Nelements*meshPatch.Np*Nfields;
-  }
+  mds.Ndofs = mds.ogsMasked.Ngather*Nfields;
 
   mds.precon = precon_t();
 

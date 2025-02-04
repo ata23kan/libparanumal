@@ -59,7 +59,7 @@ void mdsAddSettings(settings_t& settings,
   settings.newSetting(prefix+"DISCRETIZATION",
                       "CONTINUOUS",
                       "Type of Finite Element Discretization",
-                      {"CONTINUOUS", "IPDG"});
+                      {"CONTINUOUS"});
 
   settings.newSetting(prefix+"LINEAR SOLVER",
                       "PCG",

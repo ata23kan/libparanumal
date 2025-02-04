@@ -55,154 +55,99 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
     LIBP_FORCE_ABORT("mds_t::Operator called on type double, but double not set in types.h");
   }
 
-  if(disc_c0){
-    //buffer for local Ax
-    deviceMemory<double> o_AqL = platform.reserve<double>(mesh.Np*mesh.Nelements);
+  //buffer for local Ax
+  deviceMemory<double> o_AqL = platform.reserve<double>(mesh.Np*mesh.Nelements);
 
-    // int mapType = (mesh.elementType==Mesh::HEXAHEDRA &&
-    //                mesh.settings.compareSetting("ELEMENT MAP", "TRILINEAR")) ? 1:0;
+  // int mapType = (mesh.elementType==Mesh::HEXAHEDRA &&
+  //                mesh.settings.compareSetting("ELEMENT MAP", "TRILINEAR")) ? 1:0;
 
-    // int integrationType = (mesh.elementType==Mesh::HEXAHEDRA &&
-    //                        settings.compareSetting("mds INTEGRATION", "CUBATURE")) ? 1:0;
+  // int integrationType = (mesh.elementType==Mesh::HEXAHEDRA &&
+  //                        settings.compareSetting("mds INTEGRATION", "CUBATURE")) ? 1:0;
 
-    gHalo.ExchangeStart(o_q, 1);
+  gHalo.ExchangeStart(o_q, 1);
 
-    if(mesh.NlocalGatherElements/2){
-      // if(integrationType==0) { // GLL or non-hex
-        // if(mapType==0)
-          partialAxKernel(mesh.NlocalGatherElements/2,
-                          mesh.o_localGatherElementList,
-                          o_GlobalToLocal,
-                          o_wJ,
-                          o_ggeo,
-                          o_D,
-                          o_S,
-                          o_MM,
-                          static_cast<double>(lambda),
-                          o_q,
-                          o_AqL);
-        /* NC: disabling until we re-add treatment of affine elements
-        else
-          partialAxKernel(mesh.NlocalGatherElements, mesh.o_localGatherElementList,
-                          mesh.o_EXYZ, mesh.o_gllzw, mesh.o_D, mesh.o_S, mesh.o_MM, lambda, o_q, o_Aq);
-        */
-      // } else {
-      //   partialCubatureAxKernel(mesh.NlocalGatherElements,
-      //                           mesh.o_localGatherElementList,
-      //                           mesh.o_cubggeo,
-      //                           mesh.o_cubD,
-      //                           mesh.o_cubInterpT,
-      //                           lambda,
-      //                           o_q,
-      //                           o_Aq);
-      // }
-    }
-
-    // finalize halo exchange
-    gHalo.ExchangeFinish(o_q, 1);
-
-    if(mesh.NglobalGatherElements) {
-
-      // if(integrationType==0) { // GLL or non-hex
-        // if(mapType==0)
-          partialAxKernel(mesh.NglobalGatherElements,
-                          mesh.o_globalGatherElementList,
-                          o_GlobalToLocal,
-                          o_wJ,
-                          o_ggeo,
-                          o_D,
-                          o_S,
-                          o_MM,
-                          static_cast<double>(lambda),
-                          o_q,
-                          o_AqL);
-        /* NC: disabling until we re-add treatment of affine elements
-        else
-          partialAxKernel(mesh.NglobalGatherElements, mesh.o_globalGatherElementList,
-                          mesh.o_EXYZ, mesh.o_gllzw, mesh.o_D, mesh.o_S, mesh.o_MM, lambda, o_q, o_Aq);
-        */
-      // } else {
-      //   partialCubatureAxKernel(mesh.NglobalGatherElements,
-      //                           mesh.o_globalGatherElementList,
-      //                           mesh.o_cubggeo,
-      //                           mesh.o_cubD,
-      //                           mesh.o_cubInterpT,
-      //                           lambda, o_q, o_Aq);
-      // }
-    }
-
-    //gather result to Aq
-    ogsMasked.GatherStart(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
-
-    if((mesh.NlocalGatherElements+1)/2){
-      partialAxKernel((mesh.NlocalGatherElements+1)/2,
-                      mesh.o_localGatherElementList+(mesh.NlocalGatherElements/2),
-                      o_GlobalToLocal,
-                      o_wJ,
-                      o_ggeo,
-                      o_D,
-                      o_S,
-                      o_MM,
-                      static_cast<double>(lambda),
-                      o_q,
-                      o_AqL);
-    }
-
-    ogsMasked.GatherFinish(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
-
-  } else if(disc_ipdg) {
-    //buffer for gradient
-    dlong Ntotal = mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
-    deviceMemory<double> o_grad = platform.reserve<double>(Ntotal*4);
-
-    if(mesh.Nelements) {
-      dlong offset = 0;
-      partialGradientKernel(mesh.Nelements,
-                            offset,
-                            o_vgeo,
-                            o_D,
-                            o_q,
-                            o_grad);
-    }
-
-    // dfloat4 storage -> 4 entries
-    traceHalo.ExchangeStart(o_grad, 4);
-
-    if(mesh.NinternalElements)
-      partialIpdgKernel(mesh.NinternalElements,
-                        mesh.o_internalElementIds,
-                        mesh.o_vmapM,
-                        mesh.o_vmapP,
-                        static_cast<double>(lambda),
-                        static_cast<double>(tau),
-                        o_vgeo,
-                        o_sgeo,
-                        o_EToB,
+  if(mesh.NlocalGatherElements/2){
+    // if(integrationType==0) { // GLL or non-hex
+      // if(mapType==0)
+        partialAxKernel(mesh.NlocalGatherElements/2,
+                        mesh.o_localGatherElementList,
+                        o_GlobalToLocal,
+                        o_wJ,
+                        o_ggeo,
                         o_D,
-                        o_LIFT,
+                        o_S,
                         o_MM,
-                        o_grad,
-                        o_Aq);
-
-    traceHalo.ExchangeFinish(o_grad, 4);
-
-    if(mesh.NhaloElements) {
-      partialIpdgKernel(mesh.NhaloElements,
-                        mesh.o_haloElementIds,
-                        mesh.o_vmapM,
-                        mesh.o_vmapP,
                         static_cast<double>(lambda),
-                        static_cast<double>(tau),
-                        o_vgeo,
-                        o_sgeo,
-                        o_EToB,
-                        o_D,
-                        o_LIFT,
-                        o_MM,
-                        o_grad,
-                        o_Aq);
-    }
+                        o_q,
+                        o_AqL);
+      /* NC: disabling until we re-add treatment of affine elements
+      else
+        partialAxKernel(mesh.NlocalGatherElements, mesh.o_localGatherElementList,
+                        mesh.o_EXYZ, mesh.o_gllzw, mesh.o_D, mesh.o_S, mesh.o_MM, lambda, o_q, o_Aq);
+      */
+    // } else {
+    //   partialCubatureAxKernel(mesh.NlocalGatherElements,
+    //                           mesh.o_localGatherElementList,
+    //                           mesh.o_cubggeo,
+    //                           mesh.o_cubD,
+    //                           mesh.o_cubInterpT,
+    //                           lambda,
+    //                           o_q,
+    //                           o_Aq);
+    // }
   }
+
+  // finalize halo exchange
+  gHalo.ExchangeFinish(o_q, 1);
+
+  if(mesh.NglobalGatherElements) {
+
+    // if(integrationType==0) { // GLL or non-hex
+      // if(mapType==0)
+        partialAxKernel(mesh.NglobalGatherElements,
+                        mesh.o_globalGatherElementList,
+                        o_GlobalToLocal,
+                        o_wJ,
+                        o_ggeo,
+                        o_D,
+                        o_S,
+                        o_MM,
+                        static_cast<double>(lambda),
+                        o_q,
+                        o_AqL);
+      /* NC: disabling until we re-add treatment of affine elements
+      else
+        partialAxKernel(mesh.NglobalGatherElements, mesh.o_globalGatherElementList,
+                        mesh.o_EXYZ, mesh.o_gllzw, mesh.o_D, mesh.o_S, mesh.o_MM, lambda, o_q, o_Aq);
+      */
+    // } else {
+    //   partialCubatureAxKernel(mesh.NglobalGatherElements,
+    //                           mesh.o_globalGatherElementList,
+    //                           mesh.o_cubggeo,
+    //                           mesh.o_cubD,
+    //                           mesh.o_cubInterpT,
+    //                           lambda, o_q, o_Aq);
+    // }
+  }
+
+  //gather result to Aq
+  ogsMasked.GatherStart(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
+
+  if((mesh.NlocalGatherElements+1)/2){
+    partialAxKernel((mesh.NlocalGatherElements+1)/2,
+                    mesh.o_localGatherElementList+(mesh.NlocalGatherElements/2),
+                    o_GlobalToLocal,
+                    o_wJ,
+                    o_ggeo,
+                    o_D,
+                    o_S,
+                    o_MM,
+                    static_cast<double>(lambda),
+                    o_q,
+                    o_AqL);
+  }
+
+  ogsMasked.GatherFinish(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
 }
 
 
@@ -235,114 +180,58 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
     LIBP_FORCE_ABORT("mds_t::Operator called on type float, but float not set in types.h");
   }
 
-  if(disc_c0){
-    //buffer for local Ax
-    deviceMemory<float> o_AqL = platform.reserve<float>(mesh.Np*mesh.Nelements);
+  //buffer for local Ax
+  deviceMemory<float> o_AqL = platform.reserve<float>(mesh.Np*mesh.Nelements);
 
-    gHalo.ExchangeStart(o_q, 1);
+  gHalo.ExchangeStart(o_q, 1);
 
-    if(mesh.NlocalGatherElements/2){
-      floatPartialAxKernel(mesh.NlocalGatherElements/2,
-                           mesh.o_localGatherElementList,
-                           o_GlobalToLocal,
-                           o_wJ,
-                           o_ggeo,
-                           o_D,
-                           o_S,
-                           o_MM,
-                           static_cast<float>(lambda),
-                           o_q,
-                           o_AqL);
-    }
-
-    // finalize halo exchange
-    gHalo.ExchangeFinish(o_q, 1);
-
-    if(mesh.NglobalGatherElements) {
-      floatPartialAxKernel(mesh.NglobalGatherElements,
-                           mesh.o_globalGatherElementList,
-                           o_GlobalToLocal,
-                           o_wJ,
-                           o_ggeo,
-                           o_D,
-                           o_S,
-                           o_MM,
-                           static_cast<float>(lambda),
-                           o_q,
-                           o_AqL);
-    }
-
-    //gather result to Aq
-    ogsMasked.GatherStart(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
-
-    if((mesh.NlocalGatherElements+1)/2){
-      floatPartialAxKernel((mesh.NlocalGatherElements+1)/2,
-                           mesh.o_localGatherElementList+(mesh.NlocalGatherElements/2),
-                           o_GlobalToLocal,
-                           o_wJ,
-                           o_ggeo,
-                           o_D,
-                           o_S,
-                           o_MM,
-                           static_cast<float>(lambda),
-                           o_q,
-                           o_AqL);
-    }
-
-    ogsMasked.GatherFinish(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
-
-  } else if(disc_ipdg) {
-    //buffer for gradient
-    dlong Ntotal = mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
-    deviceMemory<float> o_grad = platform.reserve<float>(Ntotal*4);
-
-    if(mesh.Nelements) {
-
-      dlong offset = 0;
-      floatPartialGradientKernel(mesh.Nelements,
-                                 offset,
-                                 o_vgeo,
-                                 o_D,
-                                 o_q,
-                                 o_grad);
-    }
-
-    // float4 storage -> 4 entries
-    traceHalo.ExchangeStart(o_grad, 4);
-
-    if(mesh.NinternalElements)
-      floatPartialIpdgKernel(mesh.NinternalElements,
-                             mesh.o_internalElementIds,
-                             mesh.o_vmapM,
-                             mesh.o_vmapP,
-                             static_cast<float>(lambda),
-                             static_cast<float>(tau),
-                             o_vgeo,
-                             o_sgeo,
-                             o_EToB,
-                             o_D,
-                             o_LIFT,
-                             o_MM,
-                             o_grad,
-                             o_Aq);
-
-    traceHalo.ExchangeFinish(o_grad, 4);
-
-    if(mesh.NhaloElements) {
-      floatPartialIpdgKernel(mesh.NhaloElements,
-                             mesh.o_haloElementIds,
-                             mesh.o_vmapM,
-                             mesh.o_vmapP,
-                             static_cast<float>(lambda),
-                             static_cast<float>(tau),
-                             o_vgeo,
-                             o_sgeo,
-                             o_EToB,
-                             o_D,
-                             o_LIFT,
-                             o_MM,
-                             o_grad,
-                             o_Aq);
-    }
+  if(mesh.NlocalGatherElements/2){
+    floatPartialAxKernel(mesh.NlocalGatherElements/2,
+                         mesh.o_localGatherElementList,
+                         o_GlobalToLocal,
+                         o_wJ,
+                         o_ggeo,
+                         o_D,
+                         o_S,
+                         o_MM,
+                         static_cast<float>(lambda),
+                         o_q,
+                         o_AqL);
   }
+
+  // finalize halo exchange
+  gHalo.ExchangeFinish(o_q, 1);
+
+  if(mesh.NglobalGatherElements) {
+    floatPartialAxKernel(mesh.NglobalGatherElements,
+                         mesh.o_globalGatherElementList,
+                         o_GlobalToLocal,
+                         o_wJ,
+                         o_ggeo,
+                         o_D,
+                         o_S,
+                         o_MM,
+                         static_cast<float>(lambda),
+                         o_q,
+                         o_AqL);
+  }
+
+  //gather result to Aq
+  ogsMasked.GatherStart(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
+
+  if((mesh.NlocalGatherElements+1)/2){
+    floatPartialAxKernel((mesh.NlocalGatherElements+1)/2,
+                         mesh.o_localGatherElementList+(mesh.NlocalGatherElements/2),
+                         o_GlobalToLocal,
+                         o_wJ,
+                         o_ggeo,
+                         o_D,
+                         o_S,
+                         o_MM,
+                         static_cast<float>(lambda),
+                         o_q,
+                         o_AqL);
+  }
+
+  ogsMasked.GatherFinish(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
 }
