@@ -128,6 +128,7 @@ public:
             const dfloat tol, const int MAXIT, const int verbose);
 
   void PlotFields(memory<dfloat>& Q, std::string fileName);
+  void PlotNewMesh(memory<dfloat>& Qx, memory<dfloat>& Qy, std::string fileName);
 
   void Operator(deviceMemory<double>& o_q, deviceMemory<double>& o_Aq);
   void Operator(deviceMemory<float>& o_q, deviceMemory<float>& o_Aq);
