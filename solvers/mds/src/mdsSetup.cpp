@@ -28,7 +28,7 @@ SOFTWARE.
 #include "mdsPrecon.hpp"
 
 void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
-                       settings_t& _settings, dfloat _lambda,
+                       settings_t& _settings, dfloat _lambda, dfloat _mu,
                        const int _NBCTypes, const memory<int> _BCType){
 
   platform = _platform;
@@ -36,8 +36,13 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   comm = _mesh.comm;
   settings = _settings;
   lambda = _lambda;
+  mu = _mu;
 
-  Nfields = 1;
+  if (settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+    Nfields = 1;
+  } else if (settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+    Nfields = (mesh.dim==3) ? 3:2;
+  }
 
   //Trigger JIT kernel builds
   ogs::InitializeKernels(platform, ogs::Dfloat, ogs::Add);
@@ -96,16 +101,20 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   kernelInfoFloat["defines/dfloat4"] = "float4";
 
   // Ax kernel
-  if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
-    fileName   = oklFilePrefix + "mdsAx" + suffix + oklFileSuffix;
+  if (settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")) {
+    fileName   = oklFilePrefix + "mdsAxLaplacian" + suffix + oklFileSuffix;
     if(mesh.elementType==Mesh::HEXAHEDRA){
       if(mesh.settings.compareSetting("ELEMENT MAP", "TRILINEAR"))
       kernelName = "mdsPartialAxTrilinear" + suffix;
       else
-        kernelName = "mdsPartialAx" + suffix;
+        kernelName = "mdsPartialAxLaplacian" + suffix;
     } else{
-      kernelName = "mdsPartialAx" + suffix;
+      kernelName = "mdsPartialAxLaplacian" + suffix;
     }
+  } else if (settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+    fileName = oklFilePrefix + "mdsAxLinElastic" + suffix + oklFileSuffix;
+    kernelName = "mdsPartialAxLinElastic" + suffix;
+  }
 
     partialAxKernel = platform.buildKernel(fileName, kernelName,
                                            kernelInfoDouble);
@@ -113,41 +122,11 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
     floatPartialAxKernel = platform.buildKernel(fileName, kernelName,
                                                 kernelInfoFloat);
-  }
 
-  // } else if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-  //   int Nmax = std::max(mesh.Np, mesh.Nfaces*mesh.Nfp);
-  //   kernelInfoDouble["defines/" "p_Nmax"]= Nmax;
-  //   kernelInfoFloat["defines/" "p_Nmax"]= Nmax;
-
-  //   fileName   = oklFilePrefix + "mdsGradient" + suffix + oklFileSuffix;
-  //   kernelName = "mdsPartialGradient" + suffix;
-  //   partialGradientKernel = platform.buildKernel(fileName, kernelName,
-  //                                                 kernelInfoDouble);
-
-  //   floatPartialGradientKernel = platform.buildKernel(fileName, kernelName,
-  //                                                     kernelInfoFloat);
-
-
-  //   fileName   = oklFilePrefix + "mdsAxIpdg" + suffix + oklFileSuffix;
-  //   kernelName = "mdsPartialAxIpdg" + suffix;
-
-  //   partialIpdgKernel = platform.buildKernel(fileName, kernelName,
-  //                                            kernelInfoDouble);
-
-  //   floatPartialIpdgKernel = platform.buildKernel(fileName, kernelName,
-  //                                                 kernelInfoFloat);
-  // }
 
   /* Preconditioner Setup */
-  // if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
   Ndofs = ogsMasked.Ngather*Nfields;
   Nhalo = gHalo.Nhalo*Nfields;
-  // } 
-  // else {
-  //   Ndofs = mesh.Nelements*mesh.Np*Nfields;
-  //   Nhalo = mesh.totalHaloPairs*mesh.Np*Nfields;
-  // }
 
   if (settings.compareSetting("PRECONDITIONER", "JACOBI"))
     precon.Setup<JacobiPrecon>(*this);

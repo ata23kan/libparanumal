@@ -43,7 +43,11 @@ void mdsAddRunSettings(settings_t& settings) {
 
   settings.newSetting("LAMBDA",
                       "1.0",
-                      "Coefficient in Screened Poisson Equation");
+                      "First Lame Parameter");
+
+  settings.newSetting("MU",
+                      "0.35",
+                      "Second Lame Parameter");
 
   settings.newSetting("OUTPUT TO FILE",
                       "FALSE",
@@ -60,6 +64,11 @@ void mdsAddSettings(settings_t& settings,
                       "CONTINUOUS",
                       "Type of Finite Element Discretization",
                       {"CONTINUOUS"});
+
+  settings.newSetting(prefix+"DEFORMATION METHOD",
+                      "LAPLACIAN",
+                      "Type of Finite Element Discretization",
+                      {"LAPLACIAN", "LINEARELASTIC"});
 
   settings.newSetting(prefix+"LINEAR SOLVER",
                       "PCG",

@@ -59,6 +59,9 @@ int main(int argc, char **argv){
     dfloat lambda = 0.0;
     mdsSettings.getSetting("LAMBDA", lambda);
 
+    dfloat mu = 0.0;
+    mdsSettings.getSetting("MU", mu);
+
     // Boundary Type translation. Just defaults.
     int NBCTypes = 2;
     memory<int> BCType(2);
@@ -72,7 +75,7 @@ int main(int argc, char **argv){
 
     // set up mds solver
     mds_t mds(platform, mesh, mdsSettings,
-                        lambda, NBCTypes, BCType);
+              lambda, mu, NBCTypes, BCType);
 
     // run
     mds.Run();

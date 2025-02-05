@@ -61,6 +61,7 @@ public:
   int Nfields;
 
   dfloat lambda;
+  dfloat mu;
   dfloat tau;
 
   int disc_ipdg, disc_c0;
@@ -110,14 +111,14 @@ public:
 
   mds_t() = default;
   mds_t(platform_t &_platform, mesh_t &_mesh,
-              settings_t& _settings, dfloat _lambda,
+              settings_t& _settings, dfloat _lambda, dfloat _mu,
               const int _NBCTypes, const memory<int> _BCType) {
-    Setup(_platform, _mesh, _settings, _lambda, _NBCTypes, _BCType);
+    Setup(_platform, _mesh, _settings, _lambda, _mu, _NBCTypes, _BCType);
   }
 
   //setup
   void Setup(platform_t& _platform, mesh_t& _mesh,
-             settings_t& _settings, dfloat _lambda,
+             settings_t& _settings, dfloat _lambda, dfloat _mu,
              const int _NBCTypes, const memory<int> _BCType);
 
   void BoundarySetup();
