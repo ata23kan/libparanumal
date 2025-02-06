@@ -106,15 +106,22 @@ void mds_t::Run(){
   // }
 
   //create occa buffers
-  dlong Nall = mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
+  dlong Nall = Nfields*mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
+
   memory<dfloat> ruL(Nall);
   memory<dfloat> rvL(Nall);
   memory<dfloat> xuL(Nall);
   memory<dfloat> xvL(Nall);
   deviceMemory<dfloat> o_ruL = platform.malloc<dfloat>(Nall);
-  deviceMemory<dfloat> o_rvL = platform.malloc<dfloat>(Nall);
   deviceMemory<dfloat> o_xuL = platform.malloc<dfloat>(Nall);
-  deviceMemory<dfloat> o_xvL = platform.malloc<dfloat>(Nall);
+  
+  deviceMemory<dfloat> o_rvL;
+  deviceMemory<dfloat> o_xvL;
+
+  if(settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+    o_rvL = platform.malloc<dfloat>(Nall);
+    o_xvL = platform.malloc<dfloat>(Nall);
+  }
 
   deviceMemory<dfloat> o_ru, o_rv, o_xu, o_xv;
   // if (settings.compareSetting("DISCRETIZATION","IPDG")) {
@@ -126,49 +133,28 @@ void mds_t::Run(){
   // else {
   dlong Ng = ogsMasked.Ngather;
   dlong Nghalo = gHalo.Nhalo;
-  dlong Ngall = Ng + Nghalo;
+  dlong Ngall  = Nfields*(Ng+Nghalo);
   o_ru = platform.malloc<dfloat>(Ngall);
   o_rv = platform.malloc<dfloat>(Ngall);
   o_xu = platform.malloc<dfloat>(Ngall);
   o_xv = platform.malloc<dfloat>(Ngall);
-  // }
+    // }
 
   mesh.MassMatrixKernelSetup(Nfields); // mass matrix operator
 
-  // //populate rhs forcing
-  // forcingKernel(mesh.Nelements,
-  //               mesh.o_wJ,
-  //               mesh.o_MM,
-  //               mesh.o_x,
-  //               mesh.o_y,
-  //               mesh.o_z,
-  //               lambda,
-  //               o_ruL);
 
   //Set x to zero
   platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xuL);
-  platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xvL);
 
-  //add boundary condition contribution to rhs
-  // if (settings.comparesetting("DISCRETIZATION","IPDG")) {
-  //   rhsBCKernel(mesh.Nelements,
-  //               mesh.o_vmapM,
-  //               tau,
-  //               mesh.o_x,
-  //               mesh.o_y,
-  //               mesh.o_z,
-  //               mesh.o_vgeo,
-  //               mesh.o_sgeo,
-  //               o_EToB,
-  //               mesh.o_D,
-  //               mesh.o_LIFT,
-  //               mesh.o_MM,
-  //               o_ruL);
-  // } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
+  if(settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+    platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xvL);
+  }
+
   rhsBCKernel(mesh.Nelements,
               mesh.o_wJ,
               mesh.o_ggeo,
               mesh.o_sgeo,
+              mesh.o_vgeo,
               mesh.o_D,
               mesh.o_S,
               mesh.o_MM,
@@ -184,11 +170,12 @@ void mds_t::Run(){
   // }
 
   // gather rhs to globalDofs if c0
-  if(settings.compareSetting("DISCRETIZATION","CONTINUOUS")){
-    ogsMasked.Gather(o_ru, o_ruL, 1, ogs::Add, ogs::Trans);
-    ogsMasked.Gather(o_rv, o_rvL, 1, ogs::Add, ogs::Trans);
-    ogsMasked.Gather(o_xu, o_xuL, 1, ogs::Add, ogs::NoTrans);
-    ogsMasked.Gather(o_xv, o_xvL, 1, ogs::Add, ogs::NoTrans);
+  ogsMasked.Gather(o_ru, o_ruL, Nfields, ogs::Add, ogs::Trans);
+  ogsMasked.Gather(o_xu, o_xuL, Nfields, ogs::Add, ogs::NoTrans);
+
+  if(settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")){
+    ogsMasked.Gather(o_rv, o_rvL, Nfields, ogs::Add, ogs::Trans);
+    ogsMasked.Gather(o_xv, o_xvL, Nfields, ogs::Add, ogs::NoTrans);
   }
 
   int maxIter = 5000;
