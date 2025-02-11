@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-@kernel void mdsRhsBCLaplacianTri2D(const dlong Nelements,
+@kernel void mdsRhsBCLinElasticTri2D(const dlong Nelements,
                                     @restrict const  dfloat *  wJ,
                                     @restrict const  dfloat *  ggeo,
                                     @restrict const  dfloat *  sgeo,
@@ -45,18 +45,18 @@ SOFTWARE.
                                     @restrict dfloat  *  rhsv){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
-    @shared dfloat s_qu[p_Np];
-    @shared dfloat s_qv[p_Np];
+
+    @shared dfloat s_q[p_Nfields][p_Np];
+    // @shared dfloat s_qu[p_Np];
+    // @shared dfloat s_qv[p_Np];
     // @shared dfloat s_ndq[p_Nfp*p_Nfaces];
 
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_Np){
-        s_qu[n] = 0.;
-        s_qv[n] = 0.;
+        for(int fld=0; fld<p_Nfields; fld++){
+          s_q[fld][n] = 0.;          
+        }
       }
-      // if(n<p_NfacesNfp){
-      //   s_ndq[n] = 0.;
-      // }
     }
 
 
@@ -66,6 +66,7 @@ SOFTWARE.
         const int idM = vmapM[id];
         const int nid = idM%p_Np;
 
+
         dfloat uP=0, vP=0;
 
         const int bc = mapB[idM];
@@ -73,8 +74,9 @@ SOFTWARE.
           mdsBoundaryConditions2D(bc, x[idM], y[idM], 
                                   uP, vP);
         }
-        s_qu[nid] = uP;
-        s_qv[nid] = vP;
+
+        s_q[0][nid] = uP;
+        s_q[1][nid] = vP;
       }
     }
 
@@ -82,36 +84,70 @@ SOFTWARE.
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_Np){
         //volume Dirichlet data
-        const int id = n + e*p_Np;
         const int gid = e*p_Nggeo;
+        const int vid = e*p_Nvgeo;
+
+        const dfloat rx = vgeo[vid + p_RXID];
+        const dfloat ry = vgeo[vid + p_RYID];
+        const dfloat sx = vgeo[vid + p_SXID];
+        const dfloat sy = vgeo[vid + p_SYID];
+        const dfloat J   = wJ[e];
+
         const dfloat Grr = ggeo[gid + p_G00ID];
         const dfloat Grs = ggeo[gid + p_G01ID];
         const dfloat Gss = ggeo[gid + p_G11ID];
-        const dfloat J   = wJ[e];
 
         // contributions for u
         dfloat qrr_u = 0.;
         dfloat qrs_u = 0.;
+        dfloat qsr_u = 0.;
         dfloat qss_u = 0.;
 
         // contributions for v
         dfloat qrr_v = 0.;
         dfloat qrs_v = 0.;
+        dfloat qsr_v = 0.;
         dfloat qss_v = 0.;
+
         #pragma unroll p_Np
           for (int k=0;k<p_Np;k++) {
-            qrr_u += S[n+k*p_Np+0*p_Np*p_Np]*s_qu[k];
-            qrs_u += S[n+k*p_Np+1*p_Np*p_Np]*s_qu[k];
-            qss_u += S[n+k*p_Np+2*p_Np*p_Np]*s_qu[k];
+            dfloat qn_u = s_q[0][k];
+            dfloat qn_v = s_q[1][k];
+            // dfloat qn_u = s_qu[k];
+            // dfloat qn_v = s_qv[k];
 
-            qrr_v += S[n+k*p_Np+0*p_Np*p_Np]*s_qv[k];
-            qrs_v += S[n+k*p_Np+1*p_Np*p_Np]*s_qv[k];
-            qss_v += S[n+k*p_Np+2*p_Np*p_Np]*s_qv[k];
+            qrr_u += Se[n+k*p_Np+0*p_Np*p_Np]*qn_u;
+            qrs_u += Se[n+k*p_Np+1*p_Np*p_Np]*qn_u;
+            qsr_u += Se[n+k*p_Np+2*p_Np*p_Np]*qn_u;
+            qss_u += Se[n+k*p_Np+3*p_Np*p_Np]*qn_u;
+
+            qrr_v += Se[n+k*p_Np+0*p_Np*p_Np]*qn_v;
+            qrs_v += Se[n+k*p_Np+1*p_Np*p_Np]*qn_v;
+            qsr_v += Se[n+k*p_Np+2*p_Np*p_Np]*qn_v;
+            qss_v += Se[n+k*p_Np+3*p_Np*p_Np]*qn_v;
           }
 
-        rhsu[id] -= Grr*qrr_u+Grs*qrs_u+Gss*qss_u;
-        rhsv[id] -= Grr*qrr_v+Grs*qrs_v+Gss*qss_v;
+        const int id = n*p_Nfields + e*p_Np*p_Nfields;
+        const int id2 = id + Nelements*p_Np;
+
+        dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
+        dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
+        dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
+        dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
+
+        // ddx((lambda+2mu)dudx + lambda*dvdy) + ddy(mu*dudy + mu*dvdx)
+        rhsu[id+0] -= J * ((lambda+2*mu)*ddx_dudx +mu*ddy_dudy + lambda*ddx_dvdy + mu*ddy_dvdx);
+
+        dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
+        dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
+        dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
+        dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
+
+        // ddx(mu*dudy+mu*dvdx) + ddy((lambda+2mu)dvdy+lambda*dudx)
+        rhsu[id+1] -= J * (mu*ddx_dudy + mu * ddx_dvdx + (lambda+2*mu)*ddy_dvdy + lambda*ddy_dudx);          
+    
       }
     }
   }
 }
+

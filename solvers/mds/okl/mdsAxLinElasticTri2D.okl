@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 
-@kernel void mdsAxLaplacianTri2D(const dlong Nelements,
+@kernel void mdsAxLinElasticTri2D(const dlong Nelements,
                             @restrict const  dfloat *  wJ,
                             @restrict const  dfloat *  ggeo,
                             @restrict const  dfloat *  vgeo,
@@ -34,6 +34,7 @@ SOFTWARE.
                             @restrict const  dfloat *  Se,
                             @restrict const  dfloat *  MM,
                             const dfloat lambda,
+                            const dfloat mu,
                             @restrict const  dfloat  *  q,
                             @restrict dfloat  *  Aq){
 
@@ -81,7 +82,7 @@ SOFTWARE.
 
           const dlong id = n + e*p_Np;
 
-          Aq[id] = Grr*qrr+Grs*qrs+Gss*qss + J*lambda*qM;
+          Aq[id] = Grr*qrr+Grs*qrs+Gss*qss;
         }
       }
     }
@@ -96,24 +97,26 @@ SOFTWARE.
 // We store (Nelements per block) x Np x (1) variables
 
 
-@kernel void mdsPartialAxLaplacianTri2D(const dlong Nelements,
-                                    @restrict const  dlong   *  elementList,
-                                    @restrict const  dlong   *  GlobalToLocal,
-                                    @restrict const  dfloat *  wJ,
-                                    @restrict const  dfloat *  ggeo,
-                                    @restrict const  dfloat *  vgeo,
-                                    @restrict const  dfloat *  D,
-                                    @restrict const  dfloat *  S,
-                                    @restrict const  dfloat *  Se,
-                                    @restrict const  dfloat *  MM,
-                                    const dfloat lambda,
-                                    const dfloat mu,
-                                    @restrict const  dfloat  *  q,
-                                    @restrict dfloat  *  Aq){
+@kernel void mdsPartialAxLinElasticTri2D(const dlong Nelements,
+                                        @restrict const  dlong  *  elementList,
+                                        @restrict const  dlong  *  GlobalToLocal,
+                                        @restrict const  dfloat *  wJ,
+                                        @restrict const  dfloat *  ggeo,
+                                        @restrict const  dfloat *  vgeo,
+                                        @restrict const  dfloat *  D,
+                                        @restrict const  dfloat *  S,
+                                        @restrict const  dfloat *  Se,
+                                        @restrict const  dfloat *  MM,
+                                        const dfloat lambda,
+                                        const dfloat mu,
+                                        @restrict const  dfloat  *  q,
+                                        @restrict dfloat  *  Aq){
 
   for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
 
-    @shared dfloat s_q[p_NblockV][p_Np];
+    @shared dfloat s_qu[p_NblockV][p_Np];
+    @shared dfloat s_qv[p_NblockV][p_Np];
+    // @shared dfloat s_q[p_NblockV][p_Nfields][p_Np];
 
     for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
       for(int n=0;n<p_Np;++n;@inner(0)){
@@ -122,39 +125,74 @@ SOFTWARE.
           const dlong element = elementList[e];
           const dlong base = n + element*p_Np;
           const dlong id = GlobalToLocal[base];
-          s_q[e-eo][n] = (id!=-1) ? q[id] : 0.0;
+
+          s_qu[e-eo][n] = (id!=-1) ? q[id*p_Nfields+0] : 0.0;
+          s_qv[e-eo][n] = (id!=-1) ? q[id*p_Nfields+1] : 0.0;
         }
       }
     }
-
-
 
     for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
       for(int n=0;n<p_Np;++n;@inner(0)){
         if (e<Nelements) {
           const dlong es = e-eo;
           const dlong element = elementList[e];
+          const dlong vid = element*p_Nvgeo;
           const dlong gid = element*p_Nggeo;
+
+          const dfloat rx = vgeo[vid + p_RXID];
+          const dfloat ry = vgeo[vid + p_RYID];
+          const dfloat sx = vgeo[vid + p_SXID];
+          const dfloat sy = vgeo[vid + p_SYID];
+          const dfloat J  = wJ[element];
 
           const dfloat Grr = ggeo[gid + p_G00ID];
           const dfloat Grs = ggeo[gid + p_G01ID];
           const dfloat Gss = ggeo[gid + p_G11ID];
 
-          dfloat qrr = 0.;
-          dfloat qrs = 0.;
-          dfloat qss = 0.;
+          dfloat qrr_u = 0.;
+          dfloat qrs_u = 0.;
+          dfloat qsr_u = 0.;
+          dfloat qss_u = 0.;
+
+          dfloat qrr_v = 0.;
+          dfloat qrs_v = 0.;
+          dfloat qsr_v = 0.;
+          dfloat qss_v = 0.;
 
           #pragma unroll p_Np
             for (int k=0;k<p_Np;k++) {
-              dfloat qn = s_q[es][k];
-              qrr += S[n+k*p_Np+0*p_Np*p_Np]*qn;
-              qrs += S[n+k*p_Np+1*p_Np*p_Np]*qn;
-              qss += S[n+k*p_Np+2*p_Np*p_Np]*qn;
+              dfloat qn_u = s_qu[es][k];
+              dfloat qn_v = s_qv[es][k];
+
+              qrr_u += Se[n+k*p_Np+0*p_Np*p_Np]*qn_u;
+              qrs_u += Se[n+k*p_Np+1*p_Np*p_Np]*qn_u;
+              qsr_u += Se[n+k*p_Np+2*p_Np*p_Np]*qn_u;
+              qss_u += Se[n+k*p_Np+3*p_Np*p_Np]*qn_u;
+
+              qrr_v += Se[n+k*p_Np+0*p_Np*p_Np]*qn_v;
+              qrs_v += Se[n+k*p_Np+1*p_Np*p_Np]*qn_v;
+              qsr_v += Se[n+k*p_Np+2*p_Np*p_Np]*qn_v;
+              qss_v += Se[n+k*p_Np+3*p_Np*p_Np]*qn_v;
             }
 
-          const dlong id = n + element*p_Np;
+          const dlong id = n*p_Nfields + element*p_Np*p_Nfields;
 
-          Aq[id] = Grr*qrr+Grs*qrs+Gss*qss;
+          dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
+          dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
+          dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
+          dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
+
+          // ddx((lambda+2mu)dudx + lambda*dvdy) + ddy(mu*dudy + mu*dvdx)
+          Aq[id+0] = J * ((lambda+2*mu)*ddx_dudx + mu*ddy_dudy + lambda*ddx_dvdy + mu*ddy_dvdx);
+
+          dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
+          dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
+          dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
+          dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
+
+          // ddx(mu*dudy+mu*dvdx) + ddy((lambda+2mu)dvdy+lambda*dudx)
+          Aq[id+1] = J * (mu*ddx_dudy + mu * ddx_dvdx + (lambda+2*mu)*ddy_dvdy + lambda*ddy_dudx);          
         }
       }
     }

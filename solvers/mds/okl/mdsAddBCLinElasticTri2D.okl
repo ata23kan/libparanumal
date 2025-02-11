@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-@kernel void mdsAddBCLaplacianTri2D(const int Nelements,
+@kernel void mdsAddBCLinElasticTri2D(const int Nelements,
                                     @restrict const  dfloat *  x,
                                     @restrict const  dfloat *  y,
                                     @restrict const  dfloat *  z,
@@ -35,18 +35,34 @@ SOFTWARE.
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = n+e*p_Np;
+      
+      const int id = n*p_Nfields+e*p_Np*p_Nfields;
+      const int iid = n+e*p_Np;
       const int bc = mapB[n+e*p_Np];
 
       dfloat uP=0, vP=0;
       // dfloat dudxP=0, dudyP=0, uP=0, vP=0;
 
       if(bc==1) {
-        mdsBoundaryConditions2D(bc, x[id], y[id],
+        mdsBoundaryConditions2D(bc, x[iid], y[iid],
                                 uP, vP);
-        qu[id] = uP;
-        qv[id] = vP;
+        qu[id+0] = uP;
+        qu[id+1] = vP;
       }
     }
   }
+
+  // Second outer loop to write Q
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0; n<p_Np;++n;@inner(0)){
+
+      const dlong id  = n + e*p_Np*p_Nfields;
+      const dlong iid = n*p_Nfields + e*p_Np*p_Nfields;
+
+      Q[id+0*p_Np] = qu[iid+0];
+      Q[id+1*p_Np] = qu[iid+1];
+    }
+  }
+
+
 }

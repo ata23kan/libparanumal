@@ -130,6 +130,7 @@ public:
 
   void PlotFields(memory<dfloat>& Q, std::string fileName);
   void PlotNewMesh(memory<dfloat>& Qx, memory<dfloat>& Qy, std::string fileName);
+  void PlotNewMesh2(memory<dfloat>& Q, std::string fileName);
 
   void Operator(deviceMemory<double>& o_q, deviceMemory<double>& o_Aq);
   void Operator(deviceMemory<float>& o_q, deviceMemory<float>& o_Aq);
@@ -144,12 +145,12 @@ public:
   void BuildOperatorMatrixContinuousTet3D(parAlmond::parCOO& A);
   void BuildOperatorMatrixContinuousHex3D(parAlmond::parCOO& A);
 
-  void BuildOperatorMatrixIpdgTri2D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixIpdgTri3D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixIpdgQuad2D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixIpdgQuad3D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixIpdgTet3D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixIpdgHex3D(parAlmond::parCOO& A);
+  // void BuildOperatorMatrixIpdgTri2D(parAlmond::parCOO& A);
+  // void BuildOperatorMatrixIpdgTri3D(parAlmond::parCOO& A);
+  // void BuildOperatorMatrixIpdgQuad2D(parAlmond::parCOO& A);
+  // void BuildOperatorMatrixIpdgQuad3D(parAlmond::parCOO& A);
+  // void BuildOperatorMatrixIpdgTet3D(parAlmond::parCOO& A);
+  // void BuildOperatorMatrixIpdgHex3D(parAlmond::parCOO& A);
 
   void BuildOperatorDiagonal(memory<dfloat>& diagA);
 
@@ -160,12 +161,12 @@ public:
   void BuildOperatorDiagonalContinuousTet3D(memory<dfloat>& diagA);
   void BuildOperatorDiagonalContinuousHex3D(memory<dfloat>& diagA);
 
-  void BuildOperatorDiagonalIpdgTri2D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalIpdgTri3D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalIpdgQuad2D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalIpdgQuad3D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalIpdgTet3D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalIpdgHex3D(memory<dfloat>& diagA);
+  // void BuildOperatorDiagonalIpdgTri2D(memory<dfloat>& diagA);
+  // void BuildOperatorDiagonalIpdgTri3D(memory<dfloat>& diagA);
+  // void BuildOperatorDiagonalIpdgQuad2D(memory<dfloat>& diagA);
+  // void BuildOperatorDiagonalIpdgQuad3D(memory<dfloat>& diagA);
+  // void BuildOperatorDiagonalIpdgTet3D(memory<dfloat>& diagA);
+  // void BuildOperatorDiagonalIpdgHex3D(memory<dfloat>& diagA);
 
   mds_t SetupNewDegree(mesh_t& meshF);
 

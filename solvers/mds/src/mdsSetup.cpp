@@ -91,6 +91,7 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   int NblockV = std::max(1,blockMax/mesh.Np);
   kernelInfo["defines/" "p_NblockV"]= NblockV;
+  kernelInfo["defines/" "p_Nfields"]= Nfields;
 
   properties_t kernelInfoDouble = kernelInfo;
   kernelInfoDouble["defines/dfloat"] = "double";

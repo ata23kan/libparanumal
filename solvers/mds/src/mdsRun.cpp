@@ -86,24 +86,30 @@ void mds_t::Run(){
                                                     kernelInfo);
 
   kernel_t rhsBCKernel, addBCKernel;
-  // if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-  //   fileName   = oklFilePrefix + "mdsRhsBCIpdg" + suffix + oklFileSuffix;
-  //   kernelName = "mdsRhsBCIpdg" + suffix;
 
-  //   rhsBCKernel = platform.buildKernel(fileName,kernelName, kernelInfo);
-  // } else if (settings.compareSetting("DISCRETIZATION","CONTINUOUS")) {
+  if(settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+    fileName   = oklFilePrefix + "mdsRhsBCLaplacian" + suffix + oklFileSuffix;
+    kernelName = "mdsRhsBCLaplacian" + suffix;
+  
+    rhsBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
-  fileName   = oklFilePrefix + "mdsRhsBC" + suffix + oklFileSuffix;
-  kernelName = "mdsRhsBC" + suffix;
+    fileName   = oklFilePrefix + "mdsAddBCLaplacian" + suffix + oklFileSuffix;
+    kernelName = "mdsAddBCLaplacian" + suffix;
 
-  rhsBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+    addBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+  } else if(settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+    fileName   = oklFilePrefix + "mdsRhsBCLinElastic" + suffix + oklFileSuffix;
+    kernelName = "mdsRhsBCLinElastic" + suffix;
+  
+    rhsBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
-  fileName   = oklFilePrefix + "mdsAddBC" + suffix + oklFileSuffix;
-  kernelName = "mdsAddBC" + suffix;
+    fileName   = oklFilePrefix + "mdsAddBCLinElastic" + suffix + oklFileSuffix;
+    kernelName = "mdsAddBCLinElastic" + suffix;
 
-  addBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+    addBCKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
-  // }
+  }
+
 
   //create occa buffers
   dlong Nall = Nfields*mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
@@ -112,36 +118,28 @@ void mds_t::Run(){
   memory<dfloat> rvL(Nall);
   memory<dfloat> xuL(Nall);
   memory<dfloat> xvL(Nall);
-  deviceMemory<dfloat> o_ruL = platform.malloc<dfloat>(Nall);
-  deviceMemory<dfloat> o_xuL = platform.malloc<dfloat>(Nall);
+  deviceMemory<dfloat> o_ruL = platform.reserve<dfloat>(Nall);
+  deviceMemory<dfloat> o_xuL = platform.reserve<dfloat>(Nall);
   
   deviceMemory<dfloat> o_rvL;
   deviceMemory<dfloat> o_xvL;
 
-  if(settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-    o_rvL = platform.malloc<dfloat>(Nall);
-    o_xvL = platform.malloc<dfloat>(Nall);
-  }
+  o_rvL = platform.reserve<dfloat>(Nall);
+  o_xvL = platform.reserve<dfloat>(Nall);
 
   deviceMemory<dfloat> o_ru, o_rv, o_xu, o_xv;
-  // if (settings.compareSetting("DISCRETIZATION","IPDG")) {
-  //   o_ru = o_ruL;
-  //   o_rv = o_rvL;
-  //   o_xu = o_xuL;
-  //   o_xv = o_xvL;
-  // } 
-  // else {
   dlong Ng = ogsMasked.Ngather;
   dlong Nghalo = gHalo.Nhalo;
   dlong Ngall  = Nfields*(Ng+Nghalo);
-  o_ru = platform.malloc<dfloat>(Ngall);
-  o_rv = platform.malloc<dfloat>(Ngall);
-  o_xu = platform.malloc<dfloat>(Ngall);
-  o_xv = platform.malloc<dfloat>(Ngall);
-    // }
+  o_ru = platform.reserve<dfloat>(Ngall);
+  o_xu = platform.reserve<dfloat>(Ngall);
+
+  if(settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+    o_rv = platform.reserve<dfloat>(Ngall);
+    o_xv = platform.reserve<dfloat>(Ngall);
+  }
 
   mesh.MassMatrixKernelSetup(Nfields); // mass matrix operator
-
 
   //Set x to zero
   platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xuL);
@@ -157,17 +155,18 @@ void mds_t::Run(){
               mesh.o_vgeo,
               mesh.o_D,
               mesh.o_S,
+              mesh.o_Se,
               mesh.o_MM,
               mesh.o_vmapM,
               mesh.o_sM,
               lambda,
+              mu,
               mesh.o_x,
               mesh.o_y,
               mesh.o_z,
               o_mapB,
               o_ruL,
               o_rvL);
-  // }
 
   // gather rhs to globalDofs if c0
   ogsMasked.Gather(o_ru, o_ruL, Nfields, ogs::Add, ogs::Trans);
@@ -178,31 +177,43 @@ void mds_t::Run(){
     ogsMasked.Gather(o_xv, o_xvL, Nfields, ogs::Add, ogs::NoTrans);
   }
 
-  int maxIter = 5000;
+  int maxIter = 50;
   int verbose = settings.compareSetting("VERBOSE", "TRUE") ? 1 : 0;
 
   timePoint_t start = GlobalPlatformTime(platform);
 
   //call the solver
-  dfloat tol = (sizeof(dfloat)==sizeof(double)) ? 1.0e-8 : 1.0e-5;
+  dfloat tol = (sizeof(dfloat)==sizeof(double)) ? 1.0e-3 : 1.0e-5;
   int iter_u = Solve(linearSolver, o_xu, o_ru, tol, maxIter, verbose);
-  int iter_v = Solve(linearSolver, o_xv, o_rv, tol, maxIter, verbose);
 
-  //add the boundary data to the masked nodes
-  if(settings.compareSetting("DISCRETIZATION","CONTINUOUS")){
-    // scatter x to LocalDofs if c0
-    ogsMasked.Scatter(o_xuL, o_xu, 1, ogs::NoTrans);
-    ogsMasked.Scatter(o_xvL, o_xv, 1, ogs::NoTrans);
-    //fill masked nodes with BC data
-    addBCKernel(mesh.Nelements,
-                mesh.o_x,
-                mesh.o_y,
-                mesh.o_z,
-                o_mapB,
-                o_xuL,
-                o_xvL);
+  if(settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")){
+    int iter_v = Solve(linearSolver, o_xv, o_rv, tol, maxIter, verbose);
   }
 
+  //add the boundary data to the masked nodes
+  // scatter x to LocalDofs if c0
+  ogsMasked.Scatter(o_xuL, o_xu, Nfields, ogs::NoTrans);
+
+  if(settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")){
+    ogsMasked.Scatter(o_xvL, o_xv, Nfields, ogs::NoTrans);
+  }
+
+  deviceMemory<dfloat> o_Q;
+  if(settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+    o_Q = platform.reserve<dfloat>(Nfields*mesh.Np*mesh.Nelements);
+  }
+
+  //fill masked nodes with BC data
+  addBCKernel(mesh.Nelements,
+              mesh.o_x,
+              mesh.o_y,
+              mesh.o_z,
+              o_mapB,
+              o_Q,
+              o_xuL,
+              o_xvL);
+
+  
   timePoint_t end = GlobalPlatformTime(platform);
   double elapsedTime = ElapsedTime(start, end);
 
@@ -219,19 +230,18 @@ void mds_t::Run(){
 
   if (settings.compareSetting("OUTPUT TO FILE","TRUE")) {
 
-    // copy data back to host
-    o_xuL.copyTo(xuL);
-    o_xvL.copyTo(xvL);
+    o_Q.copyTo(xuL);
 
     // output field files
     std::string name;
     settings.getSetting("OUTPUT FILE NAME", name);
     char fname[BUFSIZ];
     sprintf(fname, "%s_u_%04d.vtu", name.c_str(), mesh.rank);
-    PlotFields(xuL, fname);
+    // PlotNewMesh(xuL, xvL, fname);
+    PlotNewMesh2(xuL, fname);
 
-    sprintf(fname, "%s_v_%04d.vtu", name.c_str(), mesh.rank);
-    PlotFields(xvL, fname);
+    // sprintf(fname, "%s_v_%04d.vtu", name.c_str(), mesh.rank);
+    // PlotFields(xvL, fname);
   }
 
   // output norm of final solution

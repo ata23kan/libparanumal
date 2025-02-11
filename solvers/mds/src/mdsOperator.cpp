@@ -58,47 +58,25 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
   }
 
   //buffer for local Ax
-  deviceMemory<double> o_AqL = platform.reserve<double>(mesh.Np*mesh.Nelements);
-
-  // int mapType = (mesh.elementType==Mesh::HEXAHEDRA &&
-  //                mesh.settings.compareSetting("ELEMENT MAP", "TRILINEAR")) ? 1:0;
-
-  // int integrationType = (mesh.elementType==Mesh::HEXAHEDRA &&
-  //                        settings.compareSetting("mds INTEGRATION", "CUBATURE")) ? 1:0;
+  deviceMemory<double> o_AqL = platform.reserve<double>(mesh.Np*mesh.Nelements*Nfields);
 
   gHalo.ExchangeStart(o_q, 1);
 
   if(mesh.NlocalGatherElements/2){
-    // if(integrationType==0) { // GLL or non-hex
-      // if(mapType==0)
-        partialAxKernel(mesh.NlocalGatherElements/2,
-                        mesh.o_localGatherElementList,
-                        o_GlobalToLocal,
-                        o_wJ,
-                        o_ggeo,
-                        o_vgeo,
-                        o_D,
-                        o_S,
-                        o_Se,
-                        o_MM,
-                        static_cast<double>(lambda),
-                        o_q,
-                        o_AqL);
-      /* NC: disabling until we re-add treatment of affine elements
-      else
-        partialAxKernel(mesh.NlocalGatherElements, mesh.o_localGatherElementList,
-                        mesh.o_EXYZ, mesh.o_gllzw, mesh.o_D, mesh.o_S, mesh.o_MM, lambda, o_q, o_Aq);
-      */
-    // } else {
-    //   partialCubatureAxKernel(mesh.NlocalGatherElements,
-    //                           mesh.o_localGatherElementList,
-    //                           mesh.o_cubggeo,
-    //                           mesh.o_cubD,
-    //                           mesh.o_cubInterpT,
-    //                           lambda,
-    //                           o_q,
-    //                           o_Aq);
-    // }
+    partialAxKernel(mesh.NlocalGatherElements/2,
+                    mesh.o_localGatherElementList,
+                    o_GlobalToLocal,
+                    o_wJ,
+                    o_ggeo,
+                    o_vgeo,
+                    o_D,
+                    o_S,
+                    o_Se,
+                    o_MM,
+                    static_cast<double>(lambda),
+                    static_cast<double>(mu),
+                    o_q,
+                    o_AqL);
   }
 
   // finalize halo exchange
@@ -106,38 +84,24 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
 
   if(mesh.NglobalGatherElements) {
 
-    // if(integrationType==0) { // GLL or non-hex
-      // if(mapType==0)
-        partialAxKernel(mesh.NglobalGatherElements,
-                        mesh.o_globalGatherElementList,
-                        o_GlobalToLocal,
-                        o_wJ,
-                        o_ggeo,
-                        o_vgeo,
-                        o_D,
-                        o_S,
-                        o_Se,
-                        o_MM,
-                        static_cast<double>(lambda),
-                        o_q,
-                        o_AqL);
-      /* NC: disabling until we re-add treatment of affine elements
-      else
-        partialAxKernel(mesh.NglobalGatherElements, mesh.o_globalGatherElementList,
-                        mesh.o_EXYZ, mesh.o_gllzw, mesh.o_D, mesh.o_S, mesh.o_MM, lambda, o_q, o_Aq);
-      */
-    // } else {
-    //   partialCubatureAxKernel(mesh.NglobalGatherElements,
-    //                           mesh.o_globalGatherElementList,
-    //                           mesh.o_cubggeo,
-    //                           mesh.o_cubD,
-    //                           mesh.o_cubInterpT,
-    //                           lambda, o_q, o_Aq);
-    // }
+    partialAxKernel(mesh.NglobalGatherElements,
+                    mesh.o_globalGatherElementList,
+                    o_GlobalToLocal,
+                    o_wJ,
+                    o_ggeo,
+                    o_vgeo,
+                    o_D,
+                    o_S,
+                    o_Se,
+                    o_MM,
+                    static_cast<double>(lambda),
+                    static_cast<double>(mu),
+                    o_q,
+                    o_AqL);
   }
 
   //gather result to Aq
-  ogsMasked.GatherStart(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
+  ogsMasked.GatherStart(o_Aq, o_AqL, Nfields, ogs::Add, ogs::Trans);
 
   if((mesh.NlocalGatherElements+1)/2){
     partialAxKernel((mesh.NlocalGatherElements+1)/2,
@@ -151,34 +115,37 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
                     o_Se,
                     o_MM,
                     static_cast<double>(lambda),
+                    static_cast<double>(mu),
                     o_q,
                     o_AqL);
   }
 
-  ogsMasked.GatherFinish(o_Aq, o_AqL, 1, ogs::Add, ogs::Trans);
+  ogsMasked.GatherFinish(o_Aq, o_AqL, Nfields, ogs::Add, ogs::Trans);
 }
 
 
 void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
 
-  deviceMemory<float> o_MM, o_D, o_S, o_LIFT;
+  deviceMemory<float> o_MM, o_D, o_S, o_Se, o_LIFT;
   deviceMemory<float> o_wJ, o_ggeo, o_sgeo, o_vgeo;
 
   if constexpr (std::is_same_v<dfloat,float>) {
-    o_MM   = mesh.o_MM;
-    o_D    = mesh.o_D;
-    o_S    = mesh.o_S;
-    o_LIFT = mesh.o_LIFT;
+    o_MM    = mesh.o_MM;
+    o_D     = mesh.o_D;
+    o_S     = mesh.o_S;
+    o_Se    = mesh.o_Se;
+    o_LIFT  = mesh.o_LIFT;
 
     o_wJ   = mesh.o_wJ;
     o_ggeo = mesh.o_ggeo;
     o_sgeo = mesh.o_sgeo;
     o_vgeo = mesh.o_vgeo;
   } else if (std::is_same_v<pfloat,float>) {
-    o_MM   = mesh.o_pfloat_MM;
-    o_D    = mesh.o_pfloat_D;
-    o_S    = mesh.o_pfloat_S;
-    o_LIFT = mesh.o_pfloat_LIFT;
+    o_MM    = mesh.o_pfloat_MM;
+    o_D     = mesh.o_pfloat_D;
+    o_S     = mesh.o_pfloat_S;
+    o_Se    = mesh.o_pfloat_Se;
+    o_LIFT  = mesh.o_pfloat_LIFT;
 
     o_wJ   = mesh.o_pfloat_wJ;
     o_ggeo = mesh.o_pfloat_ggeo;
@@ -202,8 +169,10 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_vgeo,
                          o_D,
                          o_S,
+                         o_Se,
                          o_MM,
                          static_cast<float>(lambda),
+                         static_cast<float>(mu),
                          o_q,
                          o_AqL);
   }
@@ -220,8 +189,10 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_vgeo,
                          o_D,
                          o_S,
+                         o_Se,
                          o_MM,
                          static_cast<float>(lambda),
+                         static_cast<float>(mu),
                          o_q,
                          o_AqL);
   }
@@ -238,8 +209,10 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_vgeo,
                          o_D,
                          o_S,
+                         o_Se,
                          o_MM,
                          static_cast<float>(lambda),
+                         static_cast<float>(mu),
                          o_q,
                          o_AqL);
   }
