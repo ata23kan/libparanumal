@@ -121,6 +121,26 @@ void mesh_t::ReferenceNodesTri2D(){
 
   o_S = platform.malloc<dfloat>(ST);
 
+  // stiffness matrices for the elastic equations
+  SematrixTri2D(N, Dr, Ds, MM, Se);
+  Se_rr = Se + 0*Np*Np;
+  Se_rs = Se + 1*Np*Np;
+  Se_sr = Se + 2*Np*Np;
+  Se_ss = Se + 3*Np*Np;
+
+  memory<dfloat> SeT(4*Np*Np);
+  memory<dfloat> Se_rrT = SeT + 0*Np*Np;
+  memory<dfloat> Se_rsT = SeT + 1*Np*Np;
+  memory<dfloat> Se_srT = SeT + 2*Np*Np;
+  memory<dfloat> Se_ssT = SeT + 3*Np*Np;
+
+  linAlg_t::matrixTranspose(Np, Np, Se_rr, Np, Se_rrT, Np);
+  linAlg_t::matrixTranspose(Np, Np, Se_rs, Np, Se_rsT, Np);
+  linAlg_t::matrixTranspose(Np, Np, Se_sr, Np, Se_srT, Np);
+  linAlg_t::matrixTranspose(Np, Np, Se_ss, Np, Se_ssT, Np);
+
+  o_Se = platform.malloc<dfloat>(SeT);
+
   if constexpr (std::is_same_v<dfloat,pfloat>) {
     o_pfloat_S = o_S;
   } else {

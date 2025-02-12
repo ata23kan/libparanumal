@@ -185,6 +185,11 @@ class mesh_t {
   deviceMemory<dfloat> o_S;
   deviceMemory<pfloat> o_pfloat_S;
 
+  memory<dfloat> Se;  // stiffness matrix for elastic operator
+  memory<dfloat> Se_rr, Se_rs, Se_sr, Se_ss; 
+  deviceMemory<dfloat> o_Se;
+  deviceMemory<pfloat> o_pfloat_Se;
+
   /*************************/
   /* Cubature              */
   /*************************/
@@ -851,6 +856,11 @@ class mesh_t {
                            const memory<dfloat> _Ds,
                            const memory<dfloat> _MM,
                            memory<dfloat>& _S);
+  static void SematrixTri2D(const int _N,
+                            const memory<dfloat> _Dr,
+                            const memory<dfloat> _Ds,
+                            const memory<dfloat> _MM,
+                            memory<dfloat>& _Se);
   static void InterpolationMatrixTri2D(const int _N,
                                        const memory<dfloat> rIn,
                                        const memory<dfloat> sIn,

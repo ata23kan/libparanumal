@@ -668,6 +668,32 @@ void mesh_t::SmatrixTri2D(const int _N,
   }
 }
 
+void mesh_t::SematrixTri2D(const int _N,
+                           const memory<dfloat> _Dr,
+                           const memory<dfloat> _Ds,
+                           const memory<dfloat> _MM,
+                           memory<dfloat>& _Se){
+  const int _Np = (_N+1)*(_N+2)/2;
+
+  _Se.malloc(4*_Np*_Np, 0.0);
+  memory<dfloat> _Se_rr = _Se + 0*_Np*_Np;
+  memory<dfloat> _Se_rs = _Se + 1*_Np*_Np;
+  memory<dfloat> _Se_sr = _Se + 2*_Np*_Np;
+  memory<dfloat> _Se_ss = _Se + 3*_Np*_Np;
+  for (int n=0;n<_Np;n++) {
+    for (int m=0;m<_Np;m++) {
+      for (int k=0;k<_Np;k++) {
+        for (int l=0;l<_Np;l++) {
+          _Se_rr[m+n*_Np] += _Dr[n+l*_Np]*_MM[k+l*_Np]*_Dr[m+k*_Np];
+          _Se_rs[m+n*_Np] += _Dr[n+l*_Np]*_MM[k+l*_Np]*_Ds[m+k*_Np];
+          _Se_sr[m+n*_Np] += _Ds[n+l*_Np]*_MM[k+l*_Np]*_Dr[m+k*_Np];
+          _Se_ss[m+n*_Np] += _Ds[n+l*_Np]*_MM[k+l*_Np]*_Ds[m+k*_Np];
+        }
+      }
+    }
+  }
+}
+
 void mesh_t::InterpolationMatrixTri2D(const int _N,
                                       const memory<dfloat> rIn,
                                       const memory<dfloat> sIn,
