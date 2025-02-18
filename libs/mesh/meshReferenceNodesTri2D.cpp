@@ -136,7 +136,7 @@ void mesh_t::ReferenceNodesTri2D(){
   NC0 = 1;
   NpC0 = (NC0+1)*(NC0+2)/2;
   EquispacedNodesTri2D(NC0, C0r, C0s);
-  SC0matrixTri2D(N, C0r, C0s, SC0);
+  SC0matrixTri2D(NC0, C0r, C0s, SC0);
   SrrC0 = SC0 + 0*NpC0*NpC0;
   SrsC0 = SC0 + 1*NpC0*NpC0;
   SsrC0 = SC0 + 2*NpC0*NpC0;
@@ -154,6 +154,8 @@ void mesh_t::ReferenceNodesTri2D(){
   linAlg_t::matrixTranspose(NpC0, NpC0, SssC0, NpC0, SssC0T, NpC0);
 
   o_SC0 = platform.malloc<dfloat>(SC0T);
+
+  props["defines/" "p_NpC0"] = NpC0;
 
   /* Plotting data */
   plotN = N + 3; //enriched interpolation space for plotting
