@@ -668,26 +668,33 @@ void mesh_t::SmatrixTri2D(const int _N,
   }
 }
 
-void mesh_t::SematrixTri2D(const int _N,
-                           const memory<dfloat> _Dr,
-                           const memory<dfloat> _Ds,
-                           const memory<dfloat> _MM,
-                           memory<dfloat>& _Se){
+void mesh_t::SC0matrixTri2D(const int _N,
+                           const memory<dfloat> _r,
+                           const memory<dfloat> _s,
+                           memory<dfloat>& _SC0){
   const int _Np = (_N+1)*(_N+2)/2;
 
-  _Se.malloc(4*_Np*_Np, 0.0);
-  memory<dfloat> _Se_rr = _Se + 0*_Np*_Np;
-  memory<dfloat> _Se_rs = _Se + 1*_Np*_Np;
-  memory<dfloat> _Se_sr = _Se + 2*_Np*_Np;
-  memory<dfloat> _Se_ss = _Se + 3*_Np*_Np;
+  memory<dfloat> _D, _V, _MM;
+  VandermondeTri2D(_N, _r, _s, _V);
+  MassMatrixTri2D(_Np, _V, _MM);
+  DmatrixTri2D(_N, _r, _s, _D);
+
+  memory<dfloat> _Dr = _D + 0*_Np*_Np;
+  memory<dfloat> _Ds = _D + 1*_Np*_Np;
+
+  _SC0.malloc(4*_Np*_Np, 0.0);
+  memory<dfloat> _SrrC0 = _SC0 + 0*_Np*_Np;
+  memory<dfloat> _SrsC0 = _SC0 + 1*_Np*_Np;
+  memory<dfloat> _SsrC0 = _SC0 + 2*_Np*_Np;
+  memory<dfloat> _SssC0 = _SC0 + 3*_Np*_Np;
   for (int n=0;n<_Np;n++) {
     for (int m=0;m<_Np;m++) {
       for (int k=0;k<_Np;k++) {
         for (int l=0;l<_Np;l++) {
-          _Se_rr[m+n*_Np] += _Dr[n+l*_Np]*_MM[k+l*_Np]*_Dr[m+k*_Np];
-          _Se_rs[m+n*_Np] += _Dr[n+l*_Np]*_MM[k+l*_Np]*_Ds[m+k*_Np];
-          _Se_sr[m+n*_Np] += _Ds[n+l*_Np]*_MM[k+l*_Np]*_Dr[m+k*_Np];
-          _Se_ss[m+n*_Np] += _Ds[n+l*_Np]*_MM[k+l*_Np]*_Ds[m+k*_Np];
+          _SrrC0[m+n*_Np] += _Dr[n+l*_Np]*_MM[k+l*_Np]*_Dr[m+k*_Np];
+          _SrsC0[m+n*_Np] += _Dr[n+l*_Np]*_MM[k+l*_Np]*_Ds[m+k*_Np];
+          _SsrC0[m+n*_Np] += _Ds[n+l*_Np]*_MM[k+l*_Np]*_Dr[m+k*_Np];
+          _SssC0[m+n*_Np] += _Ds[n+l*_Np]*_MM[k+l*_Np]*_Ds[m+k*_Np];
         }
       }
     }

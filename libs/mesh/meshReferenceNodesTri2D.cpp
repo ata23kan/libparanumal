@@ -121,25 +121,6 @@ void mesh_t::ReferenceNodesTri2D(){
 
   o_S = platform.malloc<dfloat>(ST);
 
-  // stiffness matrices for the elastic equations
-  SematrixTri2D(N, Dr, Ds, MM, Se);
-  Se_rr = Se + 0*Np*Np;
-  Se_rs = Se + 1*Np*Np;
-  Se_sr = Se + 2*Np*Np;
-  Se_ss = Se + 3*Np*Np;
-
-  memory<dfloat> SeT(4*Np*Np);
-  memory<dfloat> Se_rrT = SeT + 0*Np*Np;
-  memory<dfloat> Se_rsT = SeT + 1*Np*Np;
-  memory<dfloat> Se_srT = SeT + 2*Np*Np;
-  memory<dfloat> Se_ssT = SeT + 3*Np*Np;
-
-  linAlg_t::matrixTranspose(Np, Np, Se_rr, Np, Se_rrT, Np);
-  linAlg_t::matrixTranspose(Np, Np, Se_rs, Np, Se_rsT, Np);
-  linAlg_t::matrixTranspose(Np, Np, Se_sr, Np, Se_srT, Np);
-  linAlg_t::matrixTranspose(Np, Np, Se_ss, Np, Se_ssT, Np);
-
-  o_Se = platform.malloc<dfloat>(SeT);
 
   if constexpr (std::is_same_v<dfloat,pfloat>) {
     o_pfloat_S = o_S;
@@ -150,6 +131,29 @@ void mesh_t::ReferenceNodesTri2D(){
     }
     o_pfloat_S = platform.malloc<pfloat>(pfloat_ST);
   }
+
+  /* stiffness matrices for C0 systems */ 
+  NC0 = 1;
+  NpC0 = (NC0+1)*(NC0+2)/2;
+  EquispacedNodesTri2D(NC0, C0r, C0s);
+  SC0matrixTri2D(N, C0r, C0s, SC0);
+  SrrC0 = SC0 + 0*NpC0*NpC0;
+  SrsC0 = SC0 + 1*NpC0*NpC0;
+  SsrC0 = SC0 + 2*NpC0*NpC0;
+  SssC0 = SC0 + 3*NpC0*NpC0;
+
+  memory<dfloat> SC0T(4*NpC0*NpC0);
+  memory<dfloat> SrrC0T = SC0T + 0*NpC0*NpC0;
+  memory<dfloat> SrsC0T = SC0T + 1*NpC0*NpC0;
+  memory<dfloat> SsrC0T = SC0T + 2*NpC0*NpC0;
+  memory<dfloat> SssC0T = SC0T + 3*NpC0*NpC0;
+
+  linAlg_t::matrixTranspose(NpC0, NpC0, SrrC0, NpC0, SrrC0T, NpC0);
+  linAlg_t::matrixTranspose(NpC0, NpC0, SrsC0, NpC0, SrsC0T, NpC0);
+  linAlg_t::matrixTranspose(NpC0, NpC0, SsrC0, NpC0, SsrC0T, NpC0);
+  linAlg_t::matrixTranspose(NpC0, NpC0, SssC0, NpC0, SssC0T, NpC0);
+
+  o_SC0 = platform.malloc<dfloat>(SC0T);
 
   /* Plotting data */
   plotN = N + 3; //enriched interpolation space for plotting

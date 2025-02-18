@@ -31,7 +31,7 @@ SOFTWARE.
                                     @restrict const  dfloat *  vgeo,
                                     @restrict const  dfloat *  D,
                                     @restrict const  dfloat *  S,
-                                    @restrict const  dfloat *  Se,
+                                    @restrict const  dfloat *  SC0,
                                     @restrict const  dfloat *  MM,
                                     @restrict const  dlong  *  vmapM,
                                     @restrict const  dfloat *  sM,
