@@ -155,7 +155,7 @@ void mds_t::Run(){
               mesh.o_vgeo,
               mesh.o_D,
               mesh.o_S,
-              mesh.o_SC0,
+              mesh.o_Se,
               mesh.o_MM,
               mesh.o_vmapM,
               mesh.o_sM,

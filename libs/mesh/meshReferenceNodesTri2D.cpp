@@ -133,29 +133,24 @@ void mesh_t::ReferenceNodesTri2D(){
   }
 
   /* stiffness matrices for C0 systems */ 
-  NC0 = 1;
-  NpC0 = (NC0+1)*(NC0+2)/2;
-  EquispacedNodesTri2D(NC0, C0r, C0s);
-  SC0matrixTri2D(NC0, C0r, C0s, SC0);
-  SrrC0 = SC0 + 0*NpC0*NpC0;
-  SrsC0 = SC0 + 1*NpC0*NpC0;
-  SsrC0 = SC0 + 2*NpC0*NpC0;
-  SssC0 = SC0 + 3*NpC0*NpC0;
+  SematrixTri2D(N, Dr, Ds, MM, Se);
+  Srre = Se + 0*Np*Np;
+  Srse = Se + 1*Np*Np;
+  Ssre = Se + 2*Np*Np;
+  Ssse = Se + 3*Np*Np;
 
-  memory<dfloat> SC0T(4*NpC0*NpC0);
-  memory<dfloat> SrrC0T = SC0T + 0*NpC0*NpC0;
-  memory<dfloat> SrsC0T = SC0T + 1*NpC0*NpC0;
-  memory<dfloat> SsrC0T = SC0T + 2*NpC0*NpC0;
-  memory<dfloat> SssC0T = SC0T + 3*NpC0*NpC0;
+  memory<dfloat> SeT(4*Np*Np);
+  memory<dfloat> SrreT = SeT + 0*Np*Np;
+  memory<dfloat> SrseT = SeT + 1*Np*Np;
+  memory<dfloat> SsreT = SeT + 2*Np*Np;
+  memory<dfloat> SsseT = SeT + 3*Np*Np;
 
-  linAlg_t::matrixTranspose(NpC0, NpC0, SrrC0, NpC0, SrrC0T, NpC0);
-  linAlg_t::matrixTranspose(NpC0, NpC0, SrsC0, NpC0, SrsC0T, NpC0);
-  linAlg_t::matrixTranspose(NpC0, NpC0, SsrC0, NpC0, SsrC0T, NpC0);
-  linAlg_t::matrixTranspose(NpC0, NpC0, SssC0, NpC0, SssC0T, NpC0);
+  linAlg_t::matrixTranspose(Np, Np, Srre, Np, SrreT, Np);
+  linAlg_t::matrixTranspose(Np, Np, Srse, Np, SrseT, Np);
+  linAlg_t::matrixTranspose(Np, Np, Ssre, Np, SsreT, Np);
+  linAlg_t::matrixTranspose(Np, Np, Ssse, Np, SsseT, Np);
 
-  o_SC0 = platform.malloc<dfloat>(SC0T);
-
-  props["defines/" "p_NpC0"] = NpC0;
+  o_Se = platform.malloc<dfloat>(SeT);
 
   /* Plotting data */
   plotN = N + 3; //enriched interpolation space for plotting

@@ -28,14 +28,14 @@
 
 void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
 
-  deviceMemory<double> o_MM, o_D, o_S, o_SC0, o_LIFT;
+  deviceMemory<double> o_MM, o_D, o_S, o_Se, o_LIFT;
   deviceMemory<double> o_wJ, o_ggeo, o_sgeo, o_vgeo;
 
   if constexpr (std::is_same_v<dfloat,double>) {
     o_MM    = mesh.o_MM;
     o_D     = mesh.o_D;
     o_S     = mesh.o_S;
-    o_SC0   = mesh.o_SC0;
+    o_Se   = mesh.o_Se;
     o_LIFT  = mesh.o_LIFT;
 
     o_wJ   = mesh.o_wJ;
@@ -46,7 +46,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
     o_MM    = mesh.o_pfloat_MM;
     o_D     = mesh.o_pfloat_D;
     o_S     = mesh.o_pfloat_S;
-    o_SC0   = mesh.o_pfloat_SC0;
+    o_Se   = mesh.o_pfloat_Se;
     o_LIFT  = mesh.o_pfloat_LIFT;
 
     o_wJ   = mesh.o_pfloat_wJ;
@@ -71,7 +71,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
                     o_vgeo,
                     o_D,
                     o_S,
-                    o_SC0,
+                    o_Se,
                     o_MM,
                     static_cast<double>(lambda),
                     static_cast<double>(mu),
@@ -92,7 +92,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
                     o_vgeo,
                     o_D,
                     o_S,
-                    o_SC0,
+                    o_Se,
                     o_MM,
                     static_cast<double>(lambda),
                     static_cast<double>(mu),
@@ -112,7 +112,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
                     o_vgeo,
                     o_D,
                     o_S,
-                    o_SC0,
+                    o_Se,
                     o_MM,
                     static_cast<double>(lambda),
                     static_cast<double>(mu),
@@ -126,14 +126,14 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
 
 void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
 
-  deviceMemory<float> o_MM, o_D, o_S, o_SC0, o_LIFT;
+  deviceMemory<float> o_MM, o_D, o_S, o_Se, o_LIFT;
   deviceMemory<float> o_wJ, o_ggeo, o_sgeo, o_vgeo;
 
   if constexpr (std::is_same_v<dfloat,float>) {
     o_MM    = mesh.o_MM;
     o_D     = mesh.o_D;
     o_S     = mesh.o_S;
-    o_SC0   = mesh.o_SC0;
+    o_Se   = mesh.o_Se;
     o_LIFT  = mesh.o_LIFT;
 
     o_wJ   = mesh.o_wJ;
@@ -144,7 +144,7 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
     o_MM    = mesh.o_pfloat_MM;
     o_D     = mesh.o_pfloat_D;
     o_S     = mesh.o_pfloat_S;
-    o_SC0   = mesh.o_pfloat_SC0;
+    o_Se   = mesh.o_pfloat_Se;
     o_LIFT  = mesh.o_pfloat_LIFT;
 
     o_wJ   = mesh.o_pfloat_wJ;
@@ -169,7 +169,7 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_vgeo,
                          o_D,
                          o_S,
-                         o_SC0,
+                         o_Se,
                          o_MM,
                          static_cast<float>(lambda),
                          static_cast<float>(mu),
@@ -189,7 +189,7 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_vgeo,
                          o_D,
                          o_S,
-                         o_SC0,
+                         o_Se,
                          o_MM,
                          static_cast<float>(lambda),
                          static_cast<float>(mu),
@@ -209,7 +209,7 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_vgeo,
                          o_D,
                          o_S,
-                         o_SC0,
+                         o_Se,
                          o_MM,
                          static_cast<float>(lambda),
                          static_cast<float>(mu),

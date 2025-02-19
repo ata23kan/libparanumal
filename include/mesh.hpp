@@ -185,19 +185,13 @@ class mesh_t {
   deviceMemory<dfloat> o_S;
   deviceMemory<pfloat> o_pfloat_S;
 
-  /*************************/
-  /*       C0 Space        */
-  /*************************/
-  // Construct the stiffness operator for C0 operations
-  int NC0 = 0;
-  int NpC0 = 0;
-  memory<dfloat> C0r, C0s, C0t;   // Coordinates of C0 space in the reference element
-  memory<dfloat> SrrC0, SrsC0, SrtC0; //element stiffness matrices
-  memory<dfloat> SsrC0, SssC0, SstC0;
-  memory<dfloat> StrC0, StsC0, SttC0;
-  memory<dfloat> SC0;  // stiffness matrix for C0 space
-  deviceMemory<dfloat> o_SC0;
-  deviceMemory<pfloat> o_pfloat_SC0;
+  // Construct the stiffness operator for elastic equations
+  memory<dfloat> Srre, Srse, Srte; //element stiffness matrices
+  memory<dfloat> Ssre, Ssse, Sste;
+  memory<dfloat> Stre, Stse, Stte;
+  memory<dfloat> Se; 
+  deviceMemory<dfloat> o_Se;
+  deviceMemory<pfloat> o_pfloat_Se;
 
   /*************************/
   /* Cubature              */
@@ -865,10 +859,11 @@ class mesh_t {
                            const memory<dfloat> _Ds,
                            const memory<dfloat> _MM,
                            memory<dfloat>& _S);
-  static void SC0matrixTri2D(const int _N,
-                            const memory<dfloat> _r,
-                            const memory<dfloat> _s,
-                            memory<dfloat>& _SC0);
+  static void SematrixTri2D(const int _N,
+                            const memory<dfloat> _Dr,
+                            const memory<dfloat> _Ds,
+                            const memory<dfloat> _MM,
+                            memory<dfloat>& _Se);
   static void InterpolationMatrixTri2D(const int _N,
                                        const memory<dfloat> rIn,
                                        const memory<dfloat> sIn,
