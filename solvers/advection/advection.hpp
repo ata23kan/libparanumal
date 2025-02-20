@@ -33,6 +33,7 @@ SOFTWARE.
 #include "solver.hpp"
 #include "timeStepper.hpp"
 #include "linAlg.hpp"
+#include "mds.hpp"
 
 #define DADVECTION LIBP_DIR"/solvers/advection/"
 
@@ -45,6 +46,8 @@ public:
   void parseFromFile(platformSettings_t& platformSettings,
                      meshSettings_t& meshSettings,
                      const std::string filename);
+
+  mdsSettings_t extractMdsSettings();
 };
 
 class advection_t: public solver_t {
@@ -54,14 +57,28 @@ public:
 
   ogs::halo_t traceHalo;
 
-  memory<dfloat> q;
-  deviceMemory<dfloat> o_q;
+  mdsSettings_t mdsSettings;
+  mds_t mdsSolver;
+  linearSolver_t<dfloat> mdsLinearSolver;
+  dfloat mdsTOL, lambda, mu;
+  int mdsNfields;
+  memory<dfloat> mapB;  // boundary flag of face nodes
+  deviceMemory<dfloat> o_mapB;
+  int Niter;
+
+  mesh_t meshN1;
+
+  memory<dfloat> q, meshVel;
+  deviceMemory<dfloat> o_q, o_meshVel;
 
   kernel_t volumeKernel;
   kernel_t surfaceKernel;
 
   kernel_t initialConditionKernel;
   kernel_t maxWaveSpeedKernel;
+
+  kernel_t aleRhsKernel, aleBCKernel;
+  kernel_t updateGgeoKernel, updateSgeoKernel;
 
   advection_t() = default;
   advection_t(platform_t &_platform, mesh_t &_mesh,
@@ -80,6 +97,9 @@ public:
   void PlotFields(memory<dfloat> Q, const std::string fileName);
 
   void rhsf(deviceMemory<dfloat>& o_q, deviceMemory<dfloat>& o_rhs, const dfloat time);
+
+  void MeshSolve(const dfloat T);
+  // void MeshSolve(const dfloat time, const dfloat dt);
 
   dfloat MaxWaveSpeed(deviceMemory<dfloat>& o_Q, const dfloat T);
 };

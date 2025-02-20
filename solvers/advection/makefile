@@ -79,11 +79,13 @@ endif
 endif
 
 #libraries
-ADVECTION_LIBP_LIBS=timeStepper mesh parAdogs ogs linAlg core
+MDS_DIR =${LIBP_DIR}/solvers/mds
+ADVECTION_LIBP_LIBS=timeStepper linearSolver parAlmond mesh parAdogs ogs linAlg core
 
 #includes
-INCLUDES=${LIBP_INCLUDES} \
-				 -I.
+INCLUDES=-I${MDS_DIR} \
+			${LIBP_INCLUDES} \
+			-I.
 
 #defines
 DEFINES =${LIBP_DEFINES} \
@@ -93,8 +95,10 @@ DEFINES =${LIBP_DEFINES} \
 ADVECTION_CXXFLAGS=${LIBP_CXXFLAGS} ${DEFINES} ${INCLUDES}
 
 #link libraries
-LIBS=-L${LIBP_LIBS_DIR} $(addprefix -l,$(ADVECTION_LIBP_LIBS)) \
-     ${LIBP_LIBS}
+LIBS=-L${MDS_DIR} -lmds \
+	  -L${LIBP_LIBS_DIR} $(addprefix -l,$(ADVECTION_LIBP_LIBS)) \
+      ${LIBP_LIBS}
+
 
 #link flags
 LFLAGS=${ADVECTION_CXXFLAGS} ${LIBS}
@@ -102,13 +106,14 @@ LFLAGS=${ADVECTION_CXXFLAGS} ${LIBS}
 #object dependancies
 DEPS=$(wildcard *.hpp) \
      $(wildcard $(LIBP_INCLUDE_DIR)/*.h) \
-     $(wildcard $(LIBP_INCLUDE_DIR)/*.hpp)
+     $(wildcard $(LIBP_INCLUDE_DIR)/*.hpp) \
+     $(wildcard $(MDS_DIR)}/*.hpp)
 
 SRC =$(wildcard src/*.cpp)
 
 OBJS=$(SRC:.cpp=.o)
 
-.PHONY: all lib libp_libs clean clean-libs \
+.PHONY: all lib libp_libs libmds clean clean-libs \
 		clean-kernels realclean help info
 
 all: advectionMain
@@ -122,7 +127,14 @@ else
 	@${MAKE} -C ${LIBP_LIBS_DIR} $(ADVECTION_LIBP_LIBS) --no-print-directory
 endif
 
-advectionMain:$(OBJS) advectionMain.o libp_libs
+libmds: libp_libs
+ifneq (,${verbose})
+	${MAKE} -C ${MDS_DIR} lib verbose=${verbose}
+else
+	@${MAKE} -C ${MDS_DIR} lib --no-print-directory
+endif
+
+advectionMain:$(OBJS) advectionMain.o libmds
 ifneq (,${verbose})
 	$(LIBP_LD) -o advectionMain advectionMain.o $(OBJS) $(MESH_OBJS) $(LFLAGS)
 else
@@ -139,7 +151,8 @@ else
 endif
 
 # rule for .cpp files
-%.o: %.cpp $(DEPS) | libp_libs
+# %.o: %.cpp $(DEPS) | libp_libs
+%.o: %.cpp $(DEPS) | libmds
 ifneq (,${verbose})
 	$(LIBP_CXX) -o $*.o -c $*.cpp $(ADVECTION_CXXFLAGS)
 else
@@ -152,12 +165,14 @@ clean:
 	rm -f src/*.o *.o advectionMain libadvection.a
 
 clean-libs: clean
+	${MAKE} -C ${MDS_DIR} clean
 	${MAKE} -C ${LIBP_LIBS_DIR} clean
 
 clean-kernels: clean-libs
 	rm -rf ${LIBP_DIR}/.occa/
 
 realclean: clean
+	${MAKE} -C ${MDS_DIR} clean
 	${MAKE} -C ${LIBP_LIBS_DIR} realclean
 
 help:

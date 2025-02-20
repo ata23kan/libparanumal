@@ -62,6 +62,9 @@ advectionSettings_t::advectionSettings_t(comm_t _comm):
 
   newSetting("OUTPUT FILE NAME",
              "advection");
+
+  mdsAddSettings(*this, "MDS ");
+  parAlmond::AddSettings(*this, "MDS ");
 }
 
 void advectionSettings_t::report() {
@@ -99,4 +102,21 @@ void advectionSettings_t::parseFromFile(platformSettings_t& platformSettings,
       LIBP_FORCE_ABORT("Unknown setting: [" << name << "] requested");
     }
   }
+}
+
+mdsSettings_t advectionSettings_t::extractMdsSettings(){
+
+  mdsSettings_t mdsSettings(comm);
+
+  for(auto it = mdsSettings.settings.begin(); it != mdsSettings.settings.end(); ++it) {
+    setting_t& set = it->second;
+    const std::string name = set.getName();
+
+    std::string val;
+    getSetting("MDS "+name, val);
+
+    set.updateVal(val);
+  }
+
+  return mdsSettings;
 }

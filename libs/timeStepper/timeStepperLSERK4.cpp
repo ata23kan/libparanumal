@@ -143,6 +143,8 @@ void lserk4::Run(solver_t& solver,
     Step(solver, o_q, o_pmlq, time, stepdt);
     time += stepdt;
     tstep++;
+
+    if (tstep%5) StepCallback(solver, o_q, o_pmlq, time, stepdt);
   }
 }
 
@@ -176,6 +178,14 @@ void lserk4::Step(solver_t& solver,
                    o_rhspmlq, o_respmlq, o_pmlq.value());
     }
   }
+}
+
+void lserk4::StepCallback(solver_t& solver,
+                          deviceMemory<dfloat> o_q,
+                          std::optional<deviceMemory<dfloat>> o_pmlq,
+                          dfloat time, dfloat _dt) {
+
+  solver.MeshSolve(time);
 }
 
 } //namespace TimeStepper

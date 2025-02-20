@@ -41,7 +41,8 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   ogs::InitializeKernels(platform, ogs::Dfloat, ogs::Add);
 
   //setup linear algebra module
-  platform.linAlg().InitKernels({"innerProd", "max"});
+  // platform.linAlg().InitKernels({"innerProd", "max"});
+  platform.linAlg().InitKernels({"innerProd", "axpy", "max", "set"});
 
   /*setup trace halo exchange */
   traceHalo = mesh.HaloTraceSetup(1); //one field
@@ -61,6 +62,55 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
                                            mesh.Np, 1, platform, comm);
   }
 
+  // Setup mesh deformation solver
+  // bc = 1 -> wall
+  // bc = 2 -> outflow
+  int NBCTypes = 3;
+  memory<int> mdsBCType(NBCTypes);
+  mdsBCType[0] = 0;
+  mdsBCType[1] = 1;
+  mdsBCType[2] = 1;
+
+  meshN1 = mesh.SetupNewDegree(1);
+
+  mdsSettings = _settings.extractMdsSettings();
+
+  lambda = 1.0;
+  mu = 0.35;
+
+  mdsSolver.Setup(platform, meshN1, mdsSettings,
+                  lambda, mu, NBCTypes, mdsBCType);
+
+  mdsNfields = mdsSolver.Nfields;
+
+  dlong mdsNLocal = mdsSolver.Ndofs;
+  dlong mdsNhalo = mdsSolver.Nhalo;
+
+  if (mdsSettings.compareSetting("LINEAR SOLVER","NBPCG")){
+    mdsLinearSolver.Setup<LinearSolver::nbpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","NBFPCG")){
+    mdsLinearSolver.Setup<LinearSolver::nbfpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PCG")){
+    mdsLinearSolver.Setup<LinearSolver::pcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PGMRES")){
+    mdsLinearSolver.Setup<LinearSolver::pgmres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PMINRES")){
+    mdsLinearSolver.Setup<LinearSolver::pminres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  }
+
+  // solver tolerances
+
+  //Solver tolerances
+  if (sizeof(dfloat)==sizeof(double)) {
+    mdsTOL = 1.0E-3;
+  } else {
+    mdsTOL = 1.0E-3;
+  }
+
+  // mesh velocity at the interpolation nodes
+  meshVel.malloc(Nlocal+Nhalo);
+  o_meshVel = platform.malloc<dfloat>(Nlocal+Nhalo);
+
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
   o_q = platform.malloc<dfloat>(Nlocal+Nhalo);
@@ -69,14 +119,19 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   // OCCA build stuff
   properties_t kernelInfo = mesh.props; //copy base occa properties
+  properties_t kernelInfoN1 = meshN1.props;
 
   //add boundary data to kernel info
   std::string dataFileName;
   settings.getSetting("DATA FILE", dataFileName);
   kernelInfo["includes"] += dataFileName;
+  kernelInfoN1["includes"] += dataFileName;
 
   int maxNodes = std::max(mesh.Np, (mesh.Nfp*mesh.Nfaces));
   kernelInfo["defines/" "p_maxNodes"]= maxNodes;
+
+  int maxNodesN1 = std::max(meshN1.Np, (meshN1.Nfp*meshN1.Nfaces));
+  kernelInfoN1["defines/" "p_maxNodes"]= maxNodesN1;
 
   int blockMax = 256;
   if (platform.device.mode() == "CUDA") blockMax = 512;
@@ -84,8 +139,15 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   int NblockV = std::max(1, blockMax/mesh.Np);
   kernelInfo["defines/" "p_NblockV"]= NblockV;
 
+  int NblockVN1 = std::max(1, blockMax/meshN1.Np);
+  kernelInfoN1["defines/" "p_NblockV"]= NblockV;
+  kernelInfoN1["defines/" "p_NblockVN1"]= NblockVN1;
+
   int NblockS = std::max(1, blockMax/maxNodes);
   kernelInfo["defines/" "p_NblockS"]= NblockS;
+
+  int NblockSN1 = std::max(1, blockMax/maxNodesN1);
+  kernelInfoN1["defines/" "p_NblockS"]= NblockSN1;
 
   // set kernel name suffix
   std::string suffix = mesh.elementSuffix();
@@ -93,6 +155,26 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   std::string oklFileSuffix = ".okl";
 
   std::string fileName, kernelName;
+
+  kernelInfoN1["defines/ p_Nfields"] = mdsNfields;
+
+  int Nmax = std::max(meshN1.Np, meshN1.Nfaces*meshN1.Nfp);
+  kernelInfoN1["defines/" "p_Nmax"]= Nmax;
+
+  // Mesh Deformation kernels
+  fileName   = oklFilePrefix + "advectionAleRhs" + suffix + oklFileSuffix;
+  kernelName = "aleRhs" + suffix;
+  aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+
+  kernelName  = "aleBC" + suffix;
+  aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+
+  fileName  = oklFilePrefix + "advectionUpdateGeometricFactors" + suffix + oklFileSuffix;
+  kernelName = "updateGgeo" + suffix;
+  updateGgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+
+  kernelName = "updateSgeo" + suffix;
+  updateSgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
 
   // kernels from volume file
   fileName   = oklFilePrefix + "advectionVolume" + suffix + oklFileSuffix;

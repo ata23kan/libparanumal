@@ -1,0 +1,128 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017-2022 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+#define p_blockSize 256
+@kernel void updateGgeoTri2D(const dlong Nelements,
+														@restrict dfloat *  wJ,
+														@restrict dfloat *  vgeo,
+														@restrict dfloat *  ggeo,
+														@restrict const dfloat *  Q){
+	
+	// for (dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){ // for all elements
+
+	// 	for(int es=0;es<p_NblockV;++es;@inner(0)){ // for all elements in block
+	// 		const dlong e = eo+es; // element in block
+	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
+
+			// if(e<Nelements){
+				const dlong id = e*p_Np*p_Nfields;
+
+				const dfloat xe1 = Q[id+0+0*p_Np];
+				const dfloat xe2 = Q[id+1+0*p_Np];
+				const dfloat xe3 = Q[id+2+0*p_Np];
+
+				const dfloat ye1 = Q[id+0+1*p_Np];
+				const dfloat ye2 = Q[id+1+1*p_Np];
+				const dfloat ye3 = Q[id+2+1*p_Np];
+
+				const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
+				const dfloat rx =  (0.5/J)*(ye3-ye1);
+				const dfloat ry = -(0.5/J)*(xe3-xe1);
+				const dfloat sx = -(0.5/J)*(ye2-ye1);
+				const dfloat sy =  (0.5/J)*(xe2-xe1);
+
+				/* Update geometric Factors*/
+				vgeo[e*p_Nvgeo + p_RXID] = rx;
+				vgeo[e*p_Nvgeo + p_RYID] = ry;
+				vgeo[e*p_Nvgeo + p_SXID] = sx;
+				vgeo[e*p_Nvgeo + p_SYID] = sy;
+				vgeo[e*p_Nvgeo + p_JID]  = J;
+
+				ggeo[e*p_Nggeo + p_G00ID] = J*(rx*rx + ry*ry);
+				ggeo[e*p_Nggeo + p_G01ID] = J*(rx*sx + ry*sy);
+				ggeo[e*p_Nggeo + p_G11ID] = J*(sx*sx + sy*sy);
+				// const dfloat Grr = wJ[e];
+				// printf("%f\n", Grr);
+
+			// }
+		// }
+	}
+} // End ggeo kernel
+
+@kernel void updateSgeoTri2D(const dlong Nelements,
+														@restrict 			dfloat  * sgeo,
+														@restrict const dfloat  * Q){
+
+	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
+
+		const dlong id = e*p_Np*p_Nfields;
+
+		const dfloat xe1 = Q[id+0+0*p_Np];
+		const dfloat xe2 = Q[id+1+0*p_Np];
+		const dfloat xe3 = Q[id+2+0*p_Np];
+
+		const dfloat ye1 = Q[id+0+1*p_Np];
+		const dfloat ye2 = Q[id+1+1*p_Np];
+		const dfloat ye3 = Q[id+2+1*p_Np];
+
+		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
+
+		// face 1
+		dlong base = p_Nsgeo*p_Nfaces*e;
+		const dfloat nx1 = ye2-ye1;
+		const dfloat ny1 = -(xe2-xe1);
+		const dfloat  d1 = sqrt(nx1*nx1 + ny1*ny1);
+
+		sgeo[base+p_NXID] = nx1/d1;
+		sgeo[base+p_NYID] = ny1/d1;
+		sgeo[base+p_SJID] = d1/2.;
+		sgeo[base+p_IJID] = 1./J;
+
+		// face 2
+		base += p_Nsgeo;
+		const dfloat nx2 = ye3-ye2;
+		const dfloat ny2 = -(xe3-xe2);
+		const dfloat  d2 = sqrt(nx2*nx2 + ny2*ny2);
+
+		sgeo[base+p_NXID] = nx2/d2;
+		sgeo[base+p_NYID] = ny2/d2;
+		sgeo[base+p_SJID] = d2/2.;
+		sgeo[base+p_IJID] = 1./J;
+
+		// face 3
+		base += p_Nsgeo;
+		const dfloat nx3 = ye1-ye3;
+		const dfloat ny3 = -(xe1-xe3);
+		const dfloat  d3 = sqrt(nx3*nx3 + ny3*ny3);
+
+		sgeo[base+p_NXID] = nx3/d3;
+		sgeo[base+p_NYID] = ny3/d3;
+		sgeo[base+p_SJID] = d3/2.;
+		sgeo[base+p_IJID] = 1./J;
+
+	}
+}		// end updateSgeo Kernel

@@ -155,6 +155,11 @@ protected:
             std::optional<deviceMemory<dfloat>> o_pmlq,
             dfloat time, dfloat dt);
 
+  void StepCallback(solver_t& solver,
+                    deviceMemory<dfloat> o_q,
+                    std::optional<deviceMemory<dfloat>> o_pmlq,
+                    dfloat time, dfloat dt);
+
 public:
   lserk4(dlong Nelements, dlong NhaloElements,
          int Np, int Nfields,

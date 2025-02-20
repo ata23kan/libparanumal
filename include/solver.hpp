@@ -53,6 +53,13 @@ public:
     LIBP_FORCE_ABORT("Report not implemented in this solver");
   }
 
+  //Full meshsolve
+  virtual void MeshSolve(const dfloat time) {
+  // virtual void MeshSolve(const dfloat time, const dfloat dt) {
+    LIBP_FORCE_ABORT("MeshSolve not implemented in this solver");
+  }
+
+
   //Full rhs evaluation of solver in form dq/dt = rhsf(q,t)
   virtual void rhsf(deviceMemory<dfloat>& o_q, deviceMemory<dfloat>& o_rhs, const dfloat time) {
     LIBP_FORCE_ABORT("rhsf not implemented in this solver");
