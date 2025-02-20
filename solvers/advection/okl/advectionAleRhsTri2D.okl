@@ -1,0 +1,182 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017-2022 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void aleRhsTri2D(const dlong Nelements,
+                        @restrict const  dfloat *  wJ,
+                        @restrict const  dfloat *  ggeo,
+                        @restrict const  dfloat *  sgeo,
+                        @restrict const  dfloat *  vgeo,
+                        @restrict const  dfloat *  D,
+                        @restrict const  dfloat *  S,
+                        @restrict const  dfloat *  SCe,
+                        @restrict const  dfloat *  MM,
+                        @restrict const  dlong  *  vmapM,
+                        @restrict const  dfloat *  sM,
+                                  const  dfloat    lambda,
+                                  const  dfloat    mu,
+                                  const  dfloat    t,
+                        @restrict const  dfloat *  x,
+                        @restrict const  dfloat *  y,
+                        @restrict const  dfloat *  z,
+                        @restrict const  int    *  mapB,
+                        @restrict dfloat        *  rhs){
+
+	for(int e=0;e<Nelements;e++;@outer(0)){
+
+		@shared dfloat s_q[p_Nfields][p_Np];
+
+		for(int n=0;n<p_Nmax;++n;@inner(0)){
+			if(n<p_Np){
+				for(int fld=0;fld<p_Nfields;fld++){
+					s_q[fld][n]=0.;
+				}
+			}
+		}
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_NfacesNfp){
+        const int id  = n + e*p_Nfaces*p_Nfp;
+        const int idM = vmapM[id];
+        const int nid = idM%p_Np;
+
+
+        dfloat mxP=0, myP=0;
+
+        const int bc = mapB[idM];
+        if(bc>0) {
+          advectionMeshBoundary2D(bc, t, x[idM], y[idM], 
+                                  mxP, myP);
+        }
+
+        s_q[0][nid] = mxP;
+        s_q[1][nid] = myP;
+      }
+    }
+
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        //volume Dirichlet data
+        const int vid = e*p_Nvgeo;
+
+        const dfloat rx = vgeo[vid + p_RXID];
+        const dfloat ry = vgeo[vid + p_RYID];
+        const dfloat sx = vgeo[vid + p_SXID];
+        const dfloat sy = vgeo[vid + p_SYID];
+        const dfloat J   = wJ[e];
+
+        // contributions for u
+        dfloat qrr_u = 0.;
+        dfloat qrs_u = 0.;
+        dfloat qsr_u = 0.;
+        dfloat qss_u = 0.;
+
+        // contributions for v
+        dfloat qrr_v = 0.;
+        dfloat qrs_v = 0.;
+        dfloat qsr_v = 0.;
+        dfloat qss_v = 0.;
+
+        #pragma unroll p_Np
+          for (int k=0;k<p_Np;k++) {
+            dfloat qn_u = s_q[0][k];
+            dfloat qn_v = s_q[1][k];
+
+            qrr_u += SCe[n+k*p_Np+0*p_Np*p_Np]*qn_u;
+            qrs_u += SCe[n+k*p_Np+1*p_Np*p_Np]*qn_u;
+            qsr_u += SCe[n+k*p_Np+2*p_Np*p_Np]*qn_u;
+            qss_u += SCe[n+k*p_Np+3*p_Np*p_Np]*qn_u;
+
+            qrr_v += SCe[n+k*p_Np+0*p_Np*p_Np]*qn_v;
+            qrs_v += SCe[n+k*p_Np+1*p_Np*p_Np]*qn_v;
+            qsr_v += SCe[n+k*p_Np+2*p_Np*p_Np]*qn_v;
+            qss_v += SCe[n+k*p_Np+3*p_Np*p_Np]*qn_v;
+          }
+
+        const int id = n*p_Nfields + e*p_Np*p_Nfields;
+
+        dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
+        dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
+        dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
+        dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
+
+        // ddx((lambda+2mu)dudx + lambda*dvdy) + ddy(mu*dudy + mu*dvdx)
+        rhs[id+0] -= J * ((lambda+2*mu)*ddx_dudx +mu*ddy_dudy + lambda*ddx_dvdy + mu*ddy_dvdx);
+
+        dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
+        dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
+        dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
+        dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
+
+        // ddx(mu*dudy+mu*dvdx) + ddy((lambda+2mu)dvdy+lambda*dudx)
+        rhs[id+1] -= J * (mu*ddx_dudy + mu * ddx_dvdx + (lambda+2*mu)*ddy_dvdy + lambda*ddy_dudx);          
+    
+      }
+    }
+
+	}	// end element loop
+}		// end kernel aleRhsTri2D
+
+
+@kernel void aleBCTri2D(const int Nelements,
+                       @restrict const dfloat * x,
+                       @restrict const dfloat * y,
+                       @restrict const dfloat * z,
+                                 const dfloat   t,
+                       @restrict const int    * mapB,
+                       @restrict dfloat  * Q,
+                       @restrict dfloat  * q){
+
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+
+      const int id  = n*p_Nfields+e*p_Np*p_Nfields;
+      const int iid = n+e*p_Np;
+      const int bc  = mapB[iid];
+
+      dfloat mxP=0, myP=0;
+
+      if(bc==1){
+        advectionMeshBoundary2D(bc, t, x[iid], y[iid],
+                                mxP, myP);
+        q[id+0] = mxP;
+        q[id+1] = myP;
+        // printf("Boundary!!!");
+      }
+    }
+  }
+
+  // second outer loop to change the order
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+
+      const dlong id  = n+e*p_Np*p_Nfields;
+      const dlong iid = n*p_Nfields+e*p_Np*p_Nfields;
+
+      Q[id+0*p_Np] = q[iid+0];
+      Q[id+1*p_Np] = q[iid+1];
+    }
+  }
+}   // end kernel aleBCTri2D
