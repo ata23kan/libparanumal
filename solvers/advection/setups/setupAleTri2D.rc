@@ -5,11 +5,10 @@
 data/advectionTest2D.h
 
 [MESH FILE]
+advectionTestFine2.msh
 #advectionTestFine.msh
-advectionTest.msh
+#advectionTest.msh
 #advectionTestCoarse.msh
-#advectionTestL2.msh
-#advectionTestL3.msh
 
 [MESH DIMENSION]
 2

@@ -98,24 +98,21 @@ void advection_t::MeshSolve(const dfloat T, const dfloat aleT){
                    meshN1.o_z,
                    mesh.o_wJ,
                    mesh.o_vgeo,
-                   mesh.o_ggeo,
-                   o_mQ);
+                   mesh.o_ggeo);
+                   // o_mQ
 
   updateSgeoKernel(mesh.Nelements,
                    meshN1.o_x,
                    meshN1.o_y,
                    meshN1.o_z,
-                   mesh.o_sgeo,
-                   o_mQ);
+                   mesh.o_sgeo);
+                   // o_mQ
 
   deviceMemory<dfloat>o_test = platform.reserve<dfloat>(Ntotal);
   platform.linAlg().set(Ntotal, (dfloat)1.0, o_test);
-  deviceMemory<dfloat> o_mx = platform.reserve<dfloat>(mesh.Np*mesh.Nelements);
-  deviceMemory<dfloat> o_my = platform.reserve<dfloat>(mesh.Np*mesh.Nelements);
 
   interpolationKernel(mesh.Nelements,
                       o_IM,
-                      o_mQ,
                       meshN1.o_x,
                       meshN1.o_y,
                       meshN1.o_z,
@@ -123,14 +120,9 @@ void advection_t::MeshSolve(const dfloat T, const dfloat aleT){
                       mesh.o_y,
                       mesh.o_z,
                       o_meshVelx,
-                      o_meshVely,
-                      o_mx,
-                      o_my);
+                      o_meshVely);
 
   // std::exit(EXIT_SUCCESS);
-  // o_mx.copyTo(mesh.x);
-  // o_my.copyTo(mesh.y);
-  // o_mQ.free(); o_mx.free(); o_my.free();
 
   // o_test.copyTo(test);
 

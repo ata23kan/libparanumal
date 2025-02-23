@@ -32,24 +32,9 @@ SOFTWARE.
 														@restrict const dfloat * z,
 														@restrict 			dfloat *  wJ,
 														@restrict 			dfloat *  vgeo,
-														@restrict 			dfloat *  ggeo,
-														@restrict const dfloat *  Q){
+														@restrict 			dfloat *  ggeo){
 	
-	// for (dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){ // for all elements
-
-	// 	for(int es=0;es<p_NblockV;++es;@inner(0)){ // for all elements in block
-	// 		const dlong e = eo+es; // element in block
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
-
-		// const dlong id = e*p_NpN1*p_Nfields;
-
-		// const dfloat xe1 = Q[id+0+0*p_NpN1];
-		// const dfloat xe2 = Q[id+1+0*p_NpN1];
-		// const dfloat xe3 = Q[id+2+0*p_NpN1];
-
-		// const dfloat ye1 = Q[id+0+1*p_NpN1];
-		// const dfloat ye2 = Q[id+1+1*p_NpN1];
-		// const dfloat ye3 = Q[id+2+1*p_NpN1];
 
 		const dlong id = e*p_NpN1;
 
@@ -102,20 +87,9 @@ SOFTWARE.
 														@restrict const dfloat * x, 
 														@restrict const dfloat * y, 
 														@restrict const dfloat * z, 
-														@restrict 			dfloat * sgeo,
-														@restrict const dfloat * Q){
+														@restrict 			dfloat * sgeo){
 
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
-
-		// const dlong id = e*p_NpN1*p_Nfields;
-
-		// const dfloat xe1 = Q[id+0+0*p_NpN1];
-		// const dfloat xe2 = Q[id+1+0*p_NpN1];
-		// const dfloat xe3 = Q[id+2+0*p_NpN1];
-
-		// const dfloat ye1 = Q[id+0+1*p_NpN1];
-		// const dfloat ye2 = Q[id+1+1*p_NpN1];
-		// const dfloat ye3 = Q[id+2+1*p_NpN1];
 
 		const dlong id = e*p_NpN1;
 

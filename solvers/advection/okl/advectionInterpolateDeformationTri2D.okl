@@ -26,7 +26,6 @@ SOFTWARE.
 
 @kernel void interpolateDeformationTri2D(const dlong Nelements,
 																				@restrict const dfloat *  IM,
-																				@restrict const dfloat *  mQN1,
 																				@restrict       dfloat *  N1x,
 																				@restrict       dfloat *  N1y,
 																				@restrict       dfloat *  N1z,
@@ -34,22 +33,9 @@ SOFTWARE.
 																				@restrict       dfloat *  y,
 																				@restrict       dfloat *  z,
 																				@restrict       dfloat *  meshVelx,
-																				@restrict       dfloat *  meshVely,
-																				@restrict       dfloat *  mx,
-																				@restrict       dfloat *  my){
+																				@restrict       dfloat *  meshVely){
 
 	for(int e=0;e<Nelements;e++;@outer(0)){
-
-		// @shared dfloat s_mQN1[p_Nfields][p_NpN1];
-
-		// for(int n=0;n<p_Np;++n;@inner(0)){
-		// 	if(n<p_NpN1){
-		// 		for(int fld=0;fld<p_Nfields;fld++){
-		// 			const dlong id = (n+fld*p_NpN1) + e*p_NpN1*p_Nfields;
-		// 			s_mQN1[fld][n] = mQN1[id];
-		// 		}
-		// 	}
-		// }
 
 		@shared dfloat s_Vx[p_NpN1];
 		@shared dfloat s_Vy[p_NpN1];
@@ -69,26 +55,31 @@ SOFTWARE.
 
 			#pragma unroll p_NpN1
 				for(int i=0;i<p_NpN1;i++){
-					// mQ_x += IM[i+n*p_NpN1]*s_mQN1[0][i];
-					// mQ_y += IM[i+n*p_NpN1]*s_mQN1[1][i];
 					mQ_x += IM[i+n*p_NpN1]*s_Vx[i];
 					mQ_y += IM[i+n*p_NpN1]*s_Vy[i];
 				}
 
 			const dlong id = e*p_Np + n;
-			// const dlong iid = e*p_Np*p_Nfields + n;
-			mx[id] = mQ_x;
-			my[id] = mQ_y;
-
 			meshVelx[id] = mQ_x - x[id];
 			meshVely[id] = mQ_y - y[id];
 
 		}
 
+		// Use barrier to update the interpolation nodes
 		for(int n=0;n<p_Np;++n;@inner(0)){
-			const dlong id = n + e*p_Np;
-			x[id] = mx[id];
-			y[id] = my[id];
+
+			dfloat mQ_x = 0.;
+			dfloat mQ_y = 0.;
+
+			#pragma unroll p_NpN1
+				for(int i=0;i<p_NpN1;i++){
+					mQ_x += IM[i+n*p_NpN1]*s_Vx[i];
+					mQ_y += IM[i+n*p_NpN1]*s_Vy[i];
+				}
+
+			const dlong id = e*p_Np + n;
+			x[id] = mQ_x;
+			y[id] = mQ_y;
 		}
 	}  // end element loop
 }		 // end kernel
