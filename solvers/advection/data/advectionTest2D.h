@@ -58,10 +58,10 @@ SOFTWARE.
 }
 
 // Boundary conditions
-/* wall 1, outflow 2 */
+/* wall 1, outflow 2, moving wall 3 */
 #define advectionDirichletConditions2D(bc, t, x, y, nx, ny, qM, qB) \
 {                                       \
-  if(bc==1){                            \
+  if(bc==1|bc==3){                            \
     *(qB) = 0.0;                        \
   } else if(bc==2){                     \
     *(qB) = qM;                         \
@@ -72,9 +72,14 @@ SOFTWARE.
 #define advectionMeshBoundary2D(bc, t, x, y, mx, my) \
 {  \
    mx = x; \
-   my = (y==2) ? (y+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))) : y; \
+   if(bc==1){ \
+    my=y; \
+   } else if(bc==2){\
+    my = (2+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))); \
+   }\
 }  \
    // my = y; \
+   // my = (y==2) ? (y+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))) : y; \
 
 // Mesh boundary movement
 

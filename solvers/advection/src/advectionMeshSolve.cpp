@@ -93,12 +93,18 @@ void advection_t::MeshSolve(const dfloat T, const dfloat aleT){
 
 
   updateVgeoKernel(mesh.Nelements,
+                   meshN1.o_x,
+                   meshN1.o_y,
+                   meshN1.o_z,
                    mesh.o_wJ,
                    mesh.o_vgeo,
                    mesh.o_ggeo,
                    o_mQ);
 
   updateSgeoKernel(mesh.Nelements,
+                   meshN1.o_x,
+                   meshN1.o_y,
+                   meshN1.o_z,
                    mesh.o_sgeo,
                    o_mQ);
 
@@ -110,6 +116,9 @@ void advection_t::MeshSolve(const dfloat T, const dfloat aleT){
   interpolationKernel(mesh.Nelements,
                       o_IM,
                       o_mQ,
+                      meshN1.o_x,
+                      meshN1.o_y,
+                      meshN1.o_z,
                       mesh.o_x,
                       mesh.o_y,
                       mesh.o_z,
@@ -117,8 +126,8 @@ void advection_t::MeshSolve(const dfloat T, const dfloat aleT){
                       o_meshVely,
                       o_mx,
                       o_my);
-  // std::exit(EXIT_SUCCESS);
 
+  // std::exit(EXIT_SUCCESS);
   // o_mx.copyTo(mesh.x);
   // o_my.copyTo(mesh.y);
   // o_mQ.free(); o_mx.free(); o_my.free();

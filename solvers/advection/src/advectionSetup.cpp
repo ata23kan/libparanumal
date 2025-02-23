@@ -66,12 +66,12 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   // bc = 1 -> walls
   // bc = 2 -> outflow
   // bc = 3 -> wallm
-  int NBCTypes = 3;
+  int NBCTypes = 4;
   memory<int> mdsBCType(NBCTypes);
   mdsBCType[0] = 0;
   mdsBCType[1] = 1;
   mdsBCType[2] = 1;
-  // mdsBCType[3] = 2;
+  mdsBCType[3] = 2;
 
   // Build low order mesh for deformation
   meshN1 = mesh.SetupNewDegree(1);

@@ -27,9 +27,12 @@ SOFTWARE.
 
 #define p_blockSize 256
 @kernel void updateVgeoTri2D(const dlong Nelements,
-														@restrict dfloat *  wJ,
-														@restrict dfloat *  vgeo,
-														@restrict dfloat *  ggeo,
+														@restrict const dfloat * x,
+														@restrict const dfloat * y,
+														@restrict const dfloat * z,
+														@restrict 			dfloat *  wJ,
+														@restrict 			dfloat *  vgeo,
+														@restrict 			dfloat *  ggeo,
 														@restrict const dfloat *  Q){
 	
 	// for (dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){ // for all elements
@@ -38,25 +41,25 @@ SOFTWARE.
 	// 		const dlong e = eo+es; // element in block
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
 
-		const dlong id = e*p_NpN1*p_Nfields;
+		// const dlong id = e*p_NpN1*p_Nfields;
 
-		const dfloat xe1 = Q[id+0+0*p_NpN1];
-		const dfloat xe2 = Q[id+1+0*p_NpN1];
-		const dfloat xe3 = Q[id+2+0*p_NpN1];
+		// const dfloat xe1 = Q[id+0+0*p_NpN1];
+		// const dfloat xe2 = Q[id+1+0*p_NpN1];
+		// const dfloat xe3 = Q[id+2+0*p_NpN1];
 
-		const dfloat ye1 = Q[id+0+1*p_NpN1];
-		const dfloat ye2 = Q[id+1+1*p_NpN1];
-		const dfloat ye3 = Q[id+2+1*p_NpN1];
+		// const dfloat ye1 = Q[id+0+1*p_NpN1];
+		// const dfloat ye2 = Q[id+1+1*p_NpN1];
+		// const dfloat ye3 = Q[id+2+1*p_NpN1];
 
-		// const dlong id = e*p_NpN1;
+		const dlong id = e*p_NpN1;
 
-		// const dfloat xe1 = x[id+0];
-		// const dfloat xe2 = x[id+1];
-		// const dfloat xe3 = x[id+2];
+		const dfloat xe1 = x[id+0];
+		const dfloat xe2 = x[id+1];
+		const dfloat xe3 = x[id+2];
 
-		// const dfloat ye1 = y[id+0];
-		// const dfloat ye2 = y[id+1];
-		// const dfloat ye3 = y[id+2];
+		const dfloat ye1 = y[id+0];
+		const dfloat ye2 = y[id+1];
+		const dfloat ye3 = y[id+2];
 
 		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
 		const dfloat rx =  (0.5/J)*(ye3-ye1);
@@ -96,30 +99,33 @@ SOFTWARE.
 } // End ggeo kernel
 
 @kernel void updateSgeoTri2D(const dlong Nelements,
-														@restrict 			dfloat  * sgeo,
-														@restrict const dfloat  * Q){
+														@restrict const dfloat * x, 
+														@restrict const dfloat * y, 
+														@restrict const dfloat * z, 
+														@restrict 			dfloat * sgeo,
+														@restrict const dfloat * Q){
 
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
 
-		const dlong id = e*p_NpN1*p_Nfields;
+		// const dlong id = e*p_NpN1*p_Nfields;
 
-		const dfloat xe1 = Q[id+0+0*p_NpN1];
-		const dfloat xe2 = Q[id+1+0*p_NpN1];
-		const dfloat xe3 = Q[id+2+0*p_NpN1];
+		// const dfloat xe1 = Q[id+0+0*p_NpN1];
+		// const dfloat xe2 = Q[id+1+0*p_NpN1];
+		// const dfloat xe3 = Q[id+2+0*p_NpN1];
 
-		const dfloat ye1 = Q[id+0+1*p_NpN1];
-		const dfloat ye2 = Q[id+1+1*p_NpN1];
-		const dfloat ye3 = Q[id+2+1*p_NpN1];
+		// const dfloat ye1 = Q[id+0+1*p_NpN1];
+		// const dfloat ye2 = Q[id+1+1*p_NpN1];
+		// const dfloat ye3 = Q[id+2+1*p_NpN1];
 
-		// const dlong id = e*p_NpN1;
+		const dlong id = e*p_NpN1;
 
-		// const dfloat xe1 = x[id+0];
-		// const dfloat xe2 = x[id+1];
-		// const dfloat xe3 = x[id+2];
+		const dfloat xe1 = x[id+0];
+		const dfloat xe2 = x[id+1];
+		const dfloat xe3 = x[id+2];
 
-		// const dfloat ye1 = y[id+0];
-		// const dfloat ye2 = y[id+1];
-		// const dfloat ye3 = y[id+2];
+		const dfloat ye1 = y[id+0];
+		const dfloat ye2 = y[id+1];
+		const dfloat ye3 = y[id+2];
 
 
 		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));

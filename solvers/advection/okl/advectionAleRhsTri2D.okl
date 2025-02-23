@@ -154,8 +154,8 @@ SOFTWARE.
 
       dfloat mxP=0, myP=0;
 
-      // if(bc>0){
-      if(bc==1){
+      if(bc>0){
+      // if(bc==1){
         advectionMeshBoundary2D(bc, t, x[iid], y[iid],
                                 mxP, myP);
         q[id+0] = mxP;
@@ -169,14 +169,14 @@ SOFTWARE.
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
 
-      // const dlong id  = n+e*p_Np;
-      const dlong id  = n+e*p_Np*p_Nfields;
+      const dlong id  = n+e*p_Np;
+      // const dlong id  = n+e*p_Np*p_Nfields;
       const dlong iid = n*p_Nfields+e*p_Np*p_Nfields;
 
-      Q[id+0*p_Np] = q[iid+0];
-      Q[id+1*p_Np] = q[iid+1];
-      // x[id] = q[iid+0];
-      // y[id] = q[iid+1];
+      // Q[id+0*p_Np] = q[iid+0];
+      // Q[id+1*p_Np] = q[iid+1];
+      x[id] = q[iid+0];
+      y[id] = q[iid+1];
     }
   }
 }   // end kernel aleBCTri2D
