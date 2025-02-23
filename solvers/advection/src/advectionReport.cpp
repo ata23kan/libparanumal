@@ -44,6 +44,8 @@ void advection_t::Report(dfloat time, int tstep){
 
     // copy data back to host
     o_q.copyTo(q);
+    mesh.o_x.copyTo(mesh.x);
+    mesh.o_y.copyTo(mesh.y);
 
     // output field files
     std::string name;

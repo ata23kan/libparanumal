@@ -63,15 +63,42 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   }
 
   // Setup mesh deformation solver
-  // bc = 1 -> wall
+  // bc = 1 -> walls
   // bc = 2 -> outflow
+  // bc = 3 -> wallm
   int NBCTypes = 3;
   memory<int> mdsBCType(NBCTypes);
   mdsBCType[0] = 0;
   mdsBCType[1] = 1;
   mdsBCType[2] = 1;
+  // mdsBCType[3] = 2;
 
+  // Build low order mesh for deformation
   meshN1 = mesh.SetupNewDegree(1);
+
+  // Build interpolation matrix to high order mesh
+  mesh.DegreeRaiseMatrixTri2D(meshN1.N, mesh.N, IM);
+  // memory<dfloat> IMT(meshN1.Np*mesh.Np);
+  // linAlg_t::matrixTranspose(mesh.Np, meshN1.Np, IM, meshN1.Np, IMT, mesh.Np);
+  o_IM = platform.malloc<dfloat>(IM);
+
+  // for(int m=0; m<mesh.Np;m++){
+  //   for(int n=0;n<meshN1.Np;n++){
+  //     int id = m*meshN1.Np + n;
+  //     printf("%f ", IM[id]);
+  //   }
+  //   printf("\n");
+  // }
+
+  // printf("\n");
+  // for(int m=0; m<meshN1.Np;m++){
+  //   for(int n=0;n<mesh.Np;n++){
+  //     int id = m*mesh.Np + n;
+  //     printf("%f ", IMT[id]);
+  //   }
+  //   printf("\n");
+  // }
+  // std::exit(EXIT_SUCCESS);
 
   mdsSettings = _settings.extractMdsSettings();
 
@@ -108,8 +135,10 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   }
 
   // mesh velocity at the interpolation nodes
-  meshVel.malloc(Nlocal+Nhalo);
-  o_meshVel = platform.malloc<dfloat>(Nlocal+Nhalo);
+  meshVelx.malloc(Nlocal+Nhalo);
+  meshVely.malloc(Nlocal+Nhalo);
+  o_meshVelx = platform.malloc<dfloat>(Nlocal+Nhalo);
+  o_meshVely = platform.malloc<dfloat>(Nlocal+Nhalo);
 
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
@@ -120,6 +149,8 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   // OCCA build stuff
   properties_t kernelInfo = mesh.props; //copy base occa properties
   properties_t kernelInfoN1 = meshN1.props;
+
+  kernelInfo["defines/" "p_NpN1"] = meshN1.Np;
 
   //add boundary data to kernel info
   std::string dataFileName;
@@ -156,6 +187,7 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   std::string fileName, kernelName;
 
+  kernelInfo["defines/ p_Nfields"] = mdsNfields;
   kernelInfoN1["defines/ p_Nfields"] = mdsNfields;
 
   int Nmax = std::max(meshN1.Np, meshN1.Nfaces*meshN1.Nfp);
@@ -170,11 +202,15 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
 
   fileName  = oklFilePrefix + "advectionUpdateGeometricFactors" + suffix + oklFileSuffix;
-  kernelName = "updateGgeo" + suffix;
-  updateGgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  kernelName = "updateVgeo" + suffix;
+  updateVgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
   kernelName = "updateSgeo" + suffix;
-  updateSgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  updateSgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  fileName = oklFilePrefix + "advectionInterpolateDeformation" + suffix + oklFileSuffix;
+  kernelName = "interpolateDeformation" + suffix;
+  interpolationKernel = platform.buildKernel(fileName, kernelName, kernelInfo); // kernelInfo of high order
 
   // kernels from volume file
   fileName   = oklFilePrefix + "advectionVolume" + suffix + oklFileSuffix;

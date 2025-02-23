@@ -27,7 +27,7 @@ SOFTWARE.
 #include "advection.hpp"
 
 // Find the mesh velocity and update the geometric factors
-void advection_t::MeshSolve(const dfloat T){
+void advection_t::MeshSolve(const dfloat T, const dfloat aleT){
 // void advection_t::MeshSolve(const dfloat T, const dfloat dt){
 
 	dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
@@ -41,14 +41,10 @@ void advection_t::MeshSolve(const dfloat T){
   aleRhsKernel(mesh.Nelements,
                meshN1.o_wJ,
                meshN1.o_ggeo,
-               meshN1.o_sgeo,
                meshN1.o_vgeo,
-               meshN1.o_D,
                meshN1.o_S,
                meshN1.o_Se,
-               meshN1.o_MM,
                meshN1.o_vmapM,
-               meshN1.o_sM,
                lambda,
                mu,
                T,
@@ -68,7 +64,6 @@ void advection_t::MeshSolve(const dfloat T){
   Niter = mdsSolver.Solve(mdsLinearSolver, o_Gx, o_Grhs, mdsTOL, maxIter, verbose);
   mdsSolver.ogsMasked.Scatter(o_xL, o_Gx, mdsNfields, ogs::NoTrans);
   o_Grhs.free(); o_Gx.free();
-  memory<dfloat> xuL(Ntotal);
 
   // merge arrays back and enter BCs
   deviceMemory<dfloat> o_mQ = platform.reserve<dfloat>(mdsNfields*meshN1.Np*meshN1.Nelements);
@@ -82,15 +77,22 @@ void advection_t::MeshSolve(const dfloat T){
               o_mQ,
               o_xL); 
 
-  // o_xL.copyTo(xuL);
-  // int zerocnt = 0;
-  // for(int i=0;i<Ntotal;i++){
-  //   // printf("%f\n", xuL[i]);
-  //   if (xuL[i]==0) zerocnt++;
-  // }
-  // printf("zerocnt: %d\n", zerocnt);
+  memory<dfloat> xuL(mesh.Np*mesh.Nelements);
+  memory<dfloat> test(mesh.Np*mesh.Nelements);
+  // o_mQ.copyTo(xuL);
 
-  updateGgeoKernel(mesh.Nelements,
+  // for(int e=0; e<mesh.Nelements;e++){
+  //   int id=e*meshN1.Np;
+  //   int iid = e*meshN1.Np*mdsNfields;
+  //   printf("Element: %d\n", e);
+  //   printf("%f %f\t%f %f\n", meshN1.x[id+0], xuL[iid+0+0*meshN1.Np], meshN1.y[id+0], xuL[iid+0+1*meshN1.Np]);
+  //   printf("%f %f\t%f %f\n", meshN1.x[id+1], xuL[iid+1+0*meshN1.Np], meshN1.y[id+1], xuL[iid+1+1*meshN1.Np]);
+  //   printf("%f %f\t%f %f\n", meshN1.x[id+2], xuL[iid+2+0*meshN1.Np], meshN1.y[id+2], xuL[iid+2+1*meshN1.Np]);
+  //   printf("\n");
+  // }
+
+
+  updateVgeoKernel(mesh.Nelements,
                    mesh.o_wJ,
                    mesh.o_vgeo,
                    mesh.o_ggeo,
@@ -100,8 +102,45 @@ void advection_t::MeshSolve(const dfloat T){
                    mesh.o_sgeo,
                    o_mQ);
 
+  deviceMemory<dfloat>o_test = platform.reserve<dfloat>(Ntotal);
+  platform.linAlg().set(Ntotal, (dfloat)1.0, o_test);
+  deviceMemory<dfloat> o_mx = platform.reserve<dfloat>(mesh.Np*mesh.Nelements);
+  deviceMemory<dfloat> o_my = platform.reserve<dfloat>(mesh.Np*mesh.Nelements);
+
+  interpolationKernel(mesh.Nelements,
+                      o_IM,
+                      o_mQ,
+                      mesh.o_x,
+                      mesh.o_y,
+                      mesh.o_z,
+                      o_meshVelx,
+                      o_meshVely,
+                      o_mx,
+                      o_my);
   // std::exit(EXIT_SUCCESS);
-  // o_mQ.copyTo(xuL);
+
+  // o_mx.copyTo(mesh.x);
+  // o_my.copyTo(mesh.y);
+  // o_mQ.free(); o_mx.free(); o_my.free();
+
+  // o_test.copyTo(test);
+
+  // o_meshVely.copyTo(test);
+  platform.linAlg().scale(mesh.Np*mesh.Nelements, 1/aleT, o_meshVelx);
+  platform.linAlg().scale(mesh.Np*mesh.Nelements, 1/aleT, o_meshVely);
+  // for(int id=0;id<Ntotal;id++){
+  o_meshVely.copyTo(xuL);
+
+  // for(int e=0; e<mesh.Nelements; e++){
+  //   for(int n=0; n<mesh.Np; ++n){
+  //     int id = e*mesh.Np + n;
+  //     printf("%f\n", xuL[id]);
+  //   }
+  // }
+  // std::exit(EXIT_SUCCESS);
+
+  // printf("Time: %f\n", T);
+  // printf("Ale Time: %f\n\n", aleT);
   // std::string name;
   // settings.getSetting("OUTPUT FILE NAME", name);
   // char fname[BUFSIZ];

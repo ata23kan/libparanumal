@@ -156,8 +156,7 @@ protected:
             dfloat time, dfloat dt);
 
   void StepCallback(solver_t& solver,
-                    deviceMemory<dfloat> o_q,
-                    std::optional<deviceMemory<dfloat>> o_pmlq,
+                    dfloat aleTime,
                     dfloat time, dfloat dt);
 
 public:

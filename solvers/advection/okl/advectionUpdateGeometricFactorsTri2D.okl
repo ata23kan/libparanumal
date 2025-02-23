@@ -26,7 +26,7 @@ SOFTWARE.
 
 
 #define p_blockSize 256
-@kernel void updateGgeoTri2D(const dlong Nelements,
+@kernel void updateVgeoTri2D(const dlong Nelements,
 														@restrict dfloat *  wJ,
 														@restrict dfloat *  vgeo,
 														@restrict dfloat *  ggeo,
@@ -38,38 +38,60 @@ SOFTWARE.
 	// 		const dlong e = eo+es; // element in block
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
 
-			// if(e<Nelements){
-				const dlong id = e*p_Np*p_Nfields;
+		const dlong id = e*p_NpN1*p_Nfields;
 
-				const dfloat xe1 = Q[id+0+0*p_Np];
-				const dfloat xe2 = Q[id+1+0*p_Np];
-				const dfloat xe3 = Q[id+2+0*p_Np];
+		const dfloat xe1 = Q[id+0+0*p_NpN1];
+		const dfloat xe2 = Q[id+1+0*p_NpN1];
+		const dfloat xe3 = Q[id+2+0*p_NpN1];
 
-				const dfloat ye1 = Q[id+0+1*p_Np];
-				const dfloat ye2 = Q[id+1+1*p_Np];
-				const dfloat ye3 = Q[id+2+1*p_Np];
+		const dfloat ye1 = Q[id+0+1*p_NpN1];
+		const dfloat ye2 = Q[id+1+1*p_NpN1];
+		const dfloat ye3 = Q[id+2+1*p_NpN1];
 
-				const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
-				const dfloat rx =  (0.5/J)*(ye3-ye1);
-				const dfloat ry = -(0.5/J)*(xe3-xe1);
-				const dfloat sx = -(0.5/J)*(ye2-ye1);
-				const dfloat sy =  (0.5/J)*(xe2-xe1);
+		// const dlong id = e*p_NpN1;
 
-				/* Update geometric Factors*/
-				vgeo[e*p_Nvgeo + p_RXID] = rx;
-				vgeo[e*p_Nvgeo + p_RYID] = ry;
-				vgeo[e*p_Nvgeo + p_SXID] = sx;
-				vgeo[e*p_Nvgeo + p_SYID] = sy;
-				vgeo[e*p_Nvgeo + p_JID]  = J;
+		// const dfloat xe1 = x[id+0];
+		// const dfloat xe2 = x[id+1];
+		// const dfloat xe3 = x[id+2];
 
-				ggeo[e*p_Nggeo + p_G00ID] = J*(rx*rx + ry*ry);
-				ggeo[e*p_Nggeo + p_G01ID] = J*(rx*sx + ry*sy);
-				ggeo[e*p_Nggeo + p_G11ID] = J*(sx*sx + sy*sy);
-				// const dfloat Grr = wJ[e];
-				// printf("%f\n", Grr);
+		// const dfloat ye1 = y[id+0];
+		// const dfloat ye2 = y[id+1];
+		// const dfloat ye3 = y[id+2];
 
-			// }
-		// }
+		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
+		const dfloat rx =  (0.5/J)*(ye3-ye1);
+		const dfloat ry = -(0.5/J)*(xe3-xe1);
+		const dfloat sx = -(0.5/J)*(ye2-ye1);
+		const dfloat sy =  (0.5/J)*(xe2-xe1);
+
+		const dlong vgeoid = e*p_Nvgeo;
+
+		/* Update geometric Factors*/
+		vgeo[vgeoid + p_RXID] = rx;
+		vgeo[vgeoid + p_RYID] = ry;
+		vgeo[vgeoid + p_SXID] = sx;
+		vgeo[vgeoid + p_SYID] = sy;
+		vgeo[vgeoid + p_JID]  = J;
+		wJ[e] = J;
+
+		// N1vgeo[vgeoid + p_RXID] = rx;
+		// N1vgeo[vgeoid + p_RYID] = ry;
+		// N1vgeo[vgeoid + p_SXID] = sx;
+		// N1vgeo[vgeoid + p_SYID] = sy;
+		// N1vgeo[vgeoid + p_JID]  = J;
+		// N1wJ[e] = J;
+
+
+		const dlong ggeoid = e*p_Nggeo;
+
+		ggeo[ggeoid + p_G00ID] = J*(rx*rx + ry*ry);
+		ggeo[ggeoid + p_G01ID] = J*(rx*sx + ry*sy);
+		ggeo[ggeoid + p_G11ID] = J*(sx*sx + sy*sy);
+
+		// N1ggeo[ggeoid + p_G00ID] = J*(rx*rx + ry*ry);
+		// N1ggeo[ggeoid + p_G01ID] = J*(rx*sx + ry*sy);
+		// N1ggeo[ggeoid + p_G11ID] = J*(sx*sx + sy*sy);
+
 	}
 } // End ggeo kernel
 
@@ -79,15 +101,26 @@ SOFTWARE.
 
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
 
-		const dlong id = e*p_Np*p_Nfields;
+		const dlong id = e*p_NpN1*p_Nfields;
 
-		const dfloat xe1 = Q[id+0+0*p_Np];
-		const dfloat xe2 = Q[id+1+0*p_Np];
-		const dfloat xe3 = Q[id+2+0*p_Np];
+		const dfloat xe1 = Q[id+0+0*p_NpN1];
+		const dfloat xe2 = Q[id+1+0*p_NpN1];
+		const dfloat xe3 = Q[id+2+0*p_NpN1];
 
-		const dfloat ye1 = Q[id+0+1*p_Np];
-		const dfloat ye2 = Q[id+1+1*p_Np];
-		const dfloat ye3 = Q[id+2+1*p_Np];
+		const dfloat ye1 = Q[id+0+1*p_NpN1];
+		const dfloat ye2 = Q[id+1+1*p_NpN1];
+		const dfloat ye3 = Q[id+2+1*p_NpN1];
+
+		// const dlong id = e*p_NpN1;
+
+		// const dfloat xe1 = x[id+0];
+		// const dfloat xe2 = x[id+1];
+		// const dfloat xe3 = x[id+2];
+
+		// const dfloat ye1 = y[id+0];
+		// const dfloat ye2 = y[id+1];
+		// const dfloat ye3 = y[id+2];
+
 
 		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
 
@@ -102,6 +135,11 @@ SOFTWARE.
 		sgeo[base+p_SJID] = d1/2.;
 		sgeo[base+p_IJID] = 1./J;
 
+		// N1sgeo[base+p_NXID] = nx1/d1;
+		// N1sgeo[base+p_NYID] = ny1/d1;
+		// N1sgeo[base+p_SJID] = d1/2.;
+		// N1sgeo[base+p_IJID] = 1./J;
+
 		// face 2
 		base += p_Nsgeo;
 		const dfloat nx2 = ye3-ye2;
@@ -113,6 +151,11 @@ SOFTWARE.
 		sgeo[base+p_SJID] = d2/2.;
 		sgeo[base+p_IJID] = 1./J;
 
+		// N1sgeo[base+p_NXID] = nx1/d1;
+		// N1sgeo[base+p_NYID] = ny1/d1;
+		// N1sgeo[base+p_SJID] = d1/2.;
+		// N1sgeo[base+p_IJID] = 1./J;
+
 		// face 3
 		base += p_Nsgeo;
 		const dfloat nx3 = ye1-ye3;
@@ -123,6 +166,11 @@ SOFTWARE.
 		sgeo[base+p_NYID] = ny3/d3;
 		sgeo[base+p_SJID] = d3/2.;
 		sgeo[base+p_IJID] = 1./J;
+
+		// N1sgeo[base+p_NXID] = nx1/d1;
+		// N1sgeo[base+p_NYID] = ny1/d1;
+		// N1sgeo[base+p_SJID] = d1/2.;
+		// N1sgeo[base+p_IJID] = 1./J;
 
 	}
 }		// end updateSgeo Kernel

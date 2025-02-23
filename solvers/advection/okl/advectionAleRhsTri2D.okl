@@ -27,14 +27,10 @@ SOFTWARE.
 @kernel void aleRhsTri2D(const dlong Nelements,
                         @restrict const  dfloat *  wJ,
                         @restrict const  dfloat *  ggeo,
-                        @restrict const  dfloat *  sgeo,
                         @restrict const  dfloat *  vgeo,
-                        @restrict const  dfloat *  D,
                         @restrict const  dfloat *  S,
-                        @restrict const  dfloat *  SCe,
-                        @restrict const  dfloat *  MM,
+                        @restrict const  dfloat *  Se,
                         @restrict const  dlong  *  vmapM,
-                        @restrict const  dfloat *  sM,
                                   const  dfloat    lambda,
                                   const  dfloat    mu,
                                   const  dfloat    t,
@@ -104,15 +100,15 @@ SOFTWARE.
             dfloat qn_u = s_q[0][k];
             dfloat qn_v = s_q[1][k];
 
-            qrr_u += SCe[n+k*p_Np+0*p_Np*p_Np]*qn_u;
-            qrs_u += SCe[n+k*p_Np+1*p_Np*p_Np]*qn_u;
-            qsr_u += SCe[n+k*p_Np+2*p_Np*p_Np]*qn_u;
-            qss_u += SCe[n+k*p_Np+3*p_Np*p_Np]*qn_u;
+            qrr_u += Se[n+k*p_Np+0*p_Np*p_Np]*qn_u;
+            qrs_u += Se[n+k*p_Np+1*p_Np*p_Np]*qn_u;
+            qsr_u += Se[n+k*p_Np+2*p_Np*p_Np]*qn_u;
+            qss_u += Se[n+k*p_Np+3*p_Np*p_Np]*qn_u;
 
-            qrr_v += SCe[n+k*p_Np+0*p_Np*p_Np]*qn_v;
-            qrs_v += SCe[n+k*p_Np+1*p_Np*p_Np]*qn_v;
-            qsr_v += SCe[n+k*p_Np+2*p_Np*p_Np]*qn_v;
-            qss_v += SCe[n+k*p_Np+3*p_Np*p_Np]*qn_v;
+            qrr_v += Se[n+k*p_Np+0*p_Np*p_Np]*qn_v;
+            qrs_v += Se[n+k*p_Np+1*p_Np*p_Np]*qn_v;
+            qsr_v += Se[n+k*p_Np+2*p_Np*p_Np]*qn_v;
+            qss_v += Se[n+k*p_Np+3*p_Np*p_Np]*qn_v;
           }
 
         const int id = n*p_Nfields + e*p_Np*p_Nfields;
@@ -141,9 +137,9 @@ SOFTWARE.
 
 
 @kernel void aleBCTri2D(const int Nelements,
-                       @restrict const dfloat * x,
-                       @restrict const dfloat * y,
-                       @restrict const dfloat * z,
+                       @restrict       dfloat * x,
+                       @restrict       dfloat * y,
+                       @restrict       dfloat * z,
                                  const dfloat   t,
                        @restrict const int    * mapB,
                        @restrict dfloat  * Q,
@@ -158,6 +154,7 @@ SOFTWARE.
 
       dfloat mxP=0, myP=0;
 
+      // if(bc>0){
       if(bc==1){
         advectionMeshBoundary2D(bc, t, x[iid], y[iid],
                                 mxP, myP);
@@ -172,11 +169,14 @@ SOFTWARE.
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
 
+      // const dlong id  = n+e*p_Np;
       const dlong id  = n+e*p_Np*p_Nfields;
       const dlong iid = n*p_Nfields+e*p_Np*p_Nfields;
 
       Q[id+0*p_Np] = q[iid+0];
       Q[id+1*p_Np] = q[iid+1];
+      // x[id] = q[iid+0];
+      // y[id] = q[iid+1];
     }
   }
 }   // end kernel aleBCTri2D

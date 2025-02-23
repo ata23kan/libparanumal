@@ -32,6 +32,7 @@ SOFTWARE.
 #define INVWL 2.0
 #define x0 1.0
 #define y0 1.0
+#define sigma 0.3
 
 
 // Flux function
@@ -40,6 +41,14 @@ SOFTWARE.
   *(cx) = ADVECTION_SPEED_X*q;          \
   *(cy) = ADVECTION_SPEED_Y*q;          \
 }
+
+// Flux function
+#define advectionAleFlux2D(t, x, y, meshVelx, meshVely, q, cx, cy) \
+{                                       \
+  *(cx) = (ADVECTION_SPEED_X-meshVelx)*q;          \
+  *(cy) = (ADVECTION_SPEED_Y-meshVely)*q;          \
+}
+
 
 // max wavespeed (should be max eigen of Jacobian of flux function)
 #define advectionMaxWaveSpeed2D(t, x, y, q, u, v) \
@@ -63,11 +72,26 @@ SOFTWARE.
 #define advectionMeshBoundary2D(bc, t, x, y, mx, my) \
 {  \
    mx = x; \
-   my = (y==2) ? (y+A*(sin(2*PI*INVWL*(x-(1+ADVECTION_SPEED_X*t))))) : y; \
+   my = (y==2) ? (y+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))) : y; \
 }  \
+   // my = y; \
+
+// Mesh boundary movement
+
+// #define advectionMeshBoundary2D(bc, t, x, y, mx, my) \
+// {  \
+//    mx = x; \
+//    my = (y==2) ? (y+A*(sin(2*PI*INVWL*(x-(1+ADVECTION_SPEED_X*t))))) : y; \
+// }  \
 
 // Initial conditions
 #define advectionInitialConditions2D(t, x, y, q) \
 {                                       \
   *(q) = exp(-8*((x-x0)*(x-x0)+(y-y0)*(y-y0)));             \
 }
+
+// // Initial conditions
+// #define advectionInitialConditions2D(t, x, y, q) \
+// {                                       \
+//   *(q) = 1;             \
+// }

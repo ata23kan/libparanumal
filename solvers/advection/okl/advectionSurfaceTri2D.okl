@@ -35,6 +35,8 @@ SOFTWARE.
                                   @restrict const  dfloat *  x,
                                   @restrict const  dfloat *  y,
                                   @restrict const  dfloat *  z,
+                                  @restrict const  dfloat *  meshVelx,
+                                  @restrict const  dfloat *  meshVely,
                                   @restrict const  dfloat *  q,
                                   @restrict dfloat *  rhsq){
 
@@ -78,8 +80,10 @@ SOFTWARE.
             // evaluate "flux" terms: (sJ/J)*(A*nx+B*ny)*(q^* - q^-)
             dfloat cxM=0.0, cyM=0.0;
             dfloat cxP=0.0, cyP=0.0;
-            advectionFlux2D(t, x[idM], y[idM], qM, &cxM, &cyM);
-            advectionFlux2D(t, x[idM], y[idM], qP, &cxP, &cyP);
+            advectionAleFlux2D(t, x[idM], y[idM], meshVelx[idM], meshVely[idM], qM, &cxM, &cyM);
+            advectionAleFlux2D(t, x[idM], y[idM], meshVelx[idM], meshVely[idM], qP, &cxP, &cyP);
+            // advectionFlux2D(t, x[idM], y[idM], qM, &cxM, &cyM);
+            // advectionFlux2D(t, x[idM], y[idM], qP, &cxP, &cyP);
 
             const dfloat ndotcM = nx*cxM + ny*cyM;
             const dfloat ndotcP = nx*cxP + ny*cyP;
@@ -89,6 +93,10 @@ SOFTWARE.
             dfloat uP=0.0, vP=0.0;
             advectionMaxWaveSpeed2D(t, x[idM], y[idM], qM, &uM, &vM);
             advectionMaxWaveSpeed2D(t, x[idM], y[idM], qP, &uP, &vP);
+
+            // Modify for ALE -> unM = fabs(nx*(uM-wxM) + ny*(vM-wyM))
+            uM -= meshVelx[idM]; vM -= meshVely[idM];
+            uP -= meshVelx[idP]; vP -= meshVely[idP];
 
             const dfloat unM   = fabs(nx*uM + ny*vM);
             const dfloat unP   = fabs(nx*uP + ny*vP);

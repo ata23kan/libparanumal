@@ -31,7 +31,7 @@ SOFTWARE.
                             @restrict const  dfloat *  vgeo,
                             @restrict const  dfloat *  D,
                             @restrict const  dfloat *  S,
-                            @restrict const  dfloat *  SC0,
+                            @restrict const  dfloat *  Se,
                             @restrict const  dfloat *  MM,
                             const dfloat lambda,
                             const dfloat mu,
@@ -105,7 +105,7 @@ SOFTWARE.
                                         @restrict const  dfloat *  vgeo,
                                         @restrict const  dfloat *  D,
                                         @restrict const  dfloat *  S,
-                                        @restrict const  dfloat *  SC0,
+                                        @restrict const  dfloat *  Se,
                                         @restrict const  dfloat *  MM,
                                         const dfloat lambda,
                                         const dfloat mu,
@@ -165,15 +165,15 @@ SOFTWARE.
               dfloat qn_u = s_qu[es][k];
               dfloat qn_v = s_qv[es][k];
 
-              qrr_u += SC0[n+k*p_Np+0*p_Np*p_Np]*qn_u;
-              qrs_u += SC0[n+k*p_Np+1*p_Np*p_Np]*qn_u;
-              qsr_u += SC0[n+k*p_Np+2*p_Np*p_Np]*qn_u;
-              qss_u += SC0[n+k*p_Np+3*p_Np*p_Np]*qn_u;
+              qrr_u += Se[n+k*p_Np+0*p_Np*p_Np]*qn_u;
+              qrs_u += Se[n+k*p_Np+1*p_Np*p_Np]*qn_u;
+              qsr_u += Se[n+k*p_Np+2*p_Np*p_Np]*qn_u;
+              qss_u += Se[n+k*p_Np+3*p_Np*p_Np]*qn_u;
 
-              qrr_v += SC0[n+k*p_Np+0*p_Np*p_Np]*qn_v;
-              qrs_v += SC0[n+k*p_Np+1*p_Np*p_Np]*qn_v;
-              qsr_v += SC0[n+k*p_Np+2*p_Np*p_Np]*qn_v;
-              qss_v += SC0[n+k*p_Np+3*p_Np*p_Np]*qn_v;
+              qrr_v += Se[n+k*p_Np+0*p_Np*p_Np]*qn_v;
+              qrs_v += Se[n+k*p_Np+1*p_Np*p_Np]*qn_v;
+              qsr_v += Se[n+k*p_Np+2*p_Np*p_Np]*qn_v;
+              qss_v += Se[n+k*p_Np+3*p_Np*p_Np]*qn_v;
             }
 
           const dlong id = n*p_Nfields + element*p_Np*p_Nfields;

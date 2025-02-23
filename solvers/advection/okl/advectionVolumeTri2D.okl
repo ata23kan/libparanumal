@@ -32,6 +32,8 @@ SOFTWARE.
                                   @restrict const  dfloat *  x,
                                   @restrict const  dfloat *  y,
                                   @restrict const  dfloat *  z,
+                                  @restrict const  dfloat *  meshVelx,
+                                  @restrict const  dfloat *  meshVely,
                                   @restrict const  dfloat *  q,
                                   @restrict        dfloat *  rhsq){
 
@@ -52,7 +54,8 @@ SOFTWARE.
       const dfloat qn = q[id];
 
       dfloat cx=0.0, cy=0.0;
-      advectionFlux2D(t, x[id], y[id], qn, &cx, &cy);
+      advectionAleFlux2D(t, x[id], y[id], meshVelx[id], meshVely[id], qn, &cx, &cy);
+      // advectionFlux2D(t, x[id], y[id], qn, &cx, &cy);
       s_F[n] = drdx*cx + drdy*cy;
       s_G[n] = dsdx*cx + dsdy*cy;
     }

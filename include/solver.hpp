@@ -54,7 +54,7 @@ public:
   }
 
   //Full meshsolve
-  virtual void MeshSolve(const dfloat time) {
+  virtual void MeshSolve(const dfloat time, const dfloat aleTime) {
   // virtual void MeshSolve(const dfloat time, const dfloat dt) {
     LIBP_FORCE_ABORT("MeshSolve not implemented in this solver");
   }

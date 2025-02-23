@@ -6,8 +6,10 @@ data/advectionTest2D.h
 
 [MESH FILE]
 #advectionTestFine.msh
-#advectionTest.msh
-advectionTestCoarse.msh
+advectionTest.msh
+#advectionTestCoarse.msh
+#advectionTestL2.msh
+#advectionTestL3.msh
 
 [MESH DIMENSION]
 2
@@ -28,7 +30,7 @@ advectionTestCoarse.msh
 -1
 
 [POLYNOMIAL DEGREE]
-4
+5
 
 [THREAD MODEL]
 CUDA
@@ -46,10 +48,10 @@ LSERK4
 0
 
 [FINAL TIME]
-0.1
+5
 
 [OUTPUT INTERVAL]
-0.05
+0.1
 
 [OUTPUT TO FILE]
 TRUE

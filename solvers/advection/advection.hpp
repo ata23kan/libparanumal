@@ -67,9 +67,11 @@ public:
   int Niter;
 
   mesh_t meshN1;
+  memory<dfloat> IM;          // interpolation to higher order
+  deviceMemory<dfloat> o_IM;
 
-  memory<dfloat> q, meshVel;
-  deviceMemory<dfloat> o_q, o_meshVel;
+  memory<dfloat> q, meshVelx, meshVely;
+  deviceMemory<dfloat> o_q, o_meshVelx, o_meshVely;
 
   kernel_t volumeKernel;
   kernel_t surfaceKernel;
@@ -78,7 +80,8 @@ public:
   kernel_t maxWaveSpeedKernel;
 
   kernel_t aleRhsKernel, aleBCKernel;
-  kernel_t updateGgeoKernel, updateSgeoKernel;
+  kernel_t updateVgeoKernel, updateSgeoKernel;
+  kernel_t interpolationKernel;
 
   advection_t() = default;
   advection_t(platform_t &_platform, mesh_t &_mesh,
@@ -98,7 +101,7 @@ public:
 
   void rhsf(deviceMemory<dfloat>& o_q, deviceMemory<dfloat>& o_rhs, const dfloat time);
 
-  void MeshSolve(const dfloat T);
+  void MeshSolve(const dfloat T, const dfloat aleT);
   // void MeshSolve(const dfloat time, const dfloat dt);
 
   dfloat MaxWaveSpeed(deviceMemory<dfloat>& o_Q, const dfloat T);
