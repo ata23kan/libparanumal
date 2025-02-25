@@ -38,11 +38,11 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   lambda = _lambda;
   mu = _mu;
 
-  if (settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-    Nfields = 1;
-  } else if (settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+  // if (settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+  //   Nfields = 1;
+  // } else if (settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
     Nfields = (mesh.dim==3) ? 3:2;
-  }
+  // }
 
   //Trigger JIT kernel builds
   ogs::InitializeKernels(platform, ogs::Dfloat, ogs::Add);
@@ -104,14 +104,14 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   // Ax kernel
   if (settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")) {
     fileName   = oklFilePrefix + "mdsAxLaplacian" + suffix + oklFileSuffix;
-    if(mesh.elementType==Mesh::HEXAHEDRA){
-      if(mesh.settings.compareSetting("ELEMENT MAP", "TRILINEAR"))
-      kernelName = "mdsPartialAxTrilinear" + suffix;
-      else
-        kernelName = "mdsPartialAxLaplacian" + suffix;
-    } else{
+    // if(mesh.elementType==Mesh::HEXAHEDRA){
+    //   if(mesh.settings.compareSetting("ELEMENT MAP", "TRILINEAR"))
+    //   kernelName = "mdsPartialAxTrilinear" + suffix;
+    //   else
+    //     kernelName = "mdsPartialAxLaplacian" + suffix;
+    // } else{
       kernelName = "mdsPartialAxLaplacian" + suffix;
-    }
+    // }
   } else if (settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
     fileName = oklFilePrefix + "mdsAxLinElastic" + suffix + oklFileSuffix;
     kernelName = "mdsPartialAxLinElastic" + suffix;

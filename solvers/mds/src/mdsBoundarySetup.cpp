@@ -52,7 +52,8 @@ void mds_t::BoundarySetup(){
       int BC = BCType[bc];     //translate mesh's boundary flag
       mapB[n] = BC;  //record it
 
-      if (mapB[n] == 1) Nmasked++;   //Dirichlet boundary
+      if (mapB[n] > 0) Nmasked++;   //Dirichlet boundary
+      // if (mapB[n] == 1) Nmasked++;   //Dirichlet boundary
     }
   }
   o_mapB = platform.malloc<int>(mapB);
@@ -60,7 +61,8 @@ void mds_t::BoundarySetup(){
   maskIds.malloc(Nmasked);
   Nmasked =0; //reset
   for (dlong n=0;n<mesh.Nelements*mesh.Np;n++) {
-    if (mapB[n] == 1) maskIds[Nmasked++] = n;
+    if (mapB[n] > 0) maskIds[Nmasked++] = n;
+    // if (mapB[n] == 1) maskIds[Nmasked++] = n;
   }
   o_maskIds = platform.malloc<int>(maskIds);
 

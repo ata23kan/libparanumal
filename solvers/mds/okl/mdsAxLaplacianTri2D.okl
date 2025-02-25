@@ -113,7 +113,9 @@ SOFTWARE.
 
   for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
 
-    @shared dfloat s_q[p_NblockV][p_Np];
+    @shared dfloat s_qu[p_NblockV][p_Np];
+    @shared dfloat s_qv[p_NblockV][p_Np];
+    // @shared dfloat s_q[p_NblockV][p_Np];
 
     for(dlong e=eo;e<eo+p_NblockV;++e;@inner(1)){
       for(int n=0;n<p_Np;++n;@inner(0)){
@@ -122,7 +124,9 @@ SOFTWARE.
           const dlong element = elementList[e];
           const dlong base = n + element*p_Np;
           const dlong id = GlobalToLocal[base];
-          s_q[e-eo][n] = (id!=-1) ? q[id] : 0.0;
+          s_qu[e-eo][n] = (id!=-1) ? q[id*p_Nfields+0] : 0.0;
+          s_qv[e-eo][n] = (id!=-1) ? q[id*p_Nfields+1] : 0.0;
+          // s_q[e-eo][n] = (id!=-1) ? q[id] : 0.0;
         }
       }
     }
@@ -140,21 +144,32 @@ SOFTWARE.
           const dfloat Grs = ggeo[gid + p_G01ID];
           const dfloat Gss = ggeo[gid + p_G11ID];
 
-          dfloat qrr = 0.;
-          dfloat qrs = 0.;
-          dfloat qss = 0.;
+          dfloat qrr_u = 0.;
+          dfloat qrs_u = 0.;
+          dfloat qss_u = 0.;
+
+          dfloat qrr_v = 0.;
+          dfloat qrs_v = 0.;
+          dfloat qss_v = 0.;
 
           #pragma unroll p_Np
             for (int k=0;k<p_Np;k++) {
-              dfloat qn = s_q[es][k];
-              qrr += S[n+k*p_Np+0*p_Np*p_Np]*qn;
-              qrs += S[n+k*p_Np+1*p_Np*p_Np]*qn;
-              qss += S[n+k*p_Np+2*p_Np*p_Np]*qn;
+              dfloat qn_u = s_qu[es][k];
+              dfloat qn_v = s_qv[es][k];
+
+              qrr_u += S[n+k*p_Np+0*p_Np*p_Np]*qn_u;
+              qrs_u += S[n+k*p_Np+1*p_Np*p_Np]*qn_u;
+              qss_u += S[n+k*p_Np+2*p_Np*p_Np]*qn_u;
+
+              qrr_v += S[n+k*p_Np+0*p_Np*p_Np]*qn_v;
+              qrs_v += S[n+k*p_Np+1*p_Np*p_Np]*qn_v;
+              qss_v += S[n+k*p_Np+2*p_Np*p_Np]*qn_v;
             }
 
-          const dlong id = n + element*p_Np;
+          const dlong id = n*p_Nfields + element*p_Np*p_Nfields;
 
-          Aq[id] = Grr*qrr+Grs*qrs+Gss*qss;
+          Aq[id+0] = Grr*qrr_u+Grs*qrs_u+Gss*qss_u;
+          Aq[id+1] = Grr*qrr_v+Grs*qrs_v+Gss*qss_v;
         }
       }
     }
