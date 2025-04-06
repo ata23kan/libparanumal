@@ -6,8 +6,8 @@ data/mdsTest2D.h
 
 [MESH FILE]
 #BOX
-square_coarse.msh
-#square.msh
+#square_coarse.msh
+square.msh
 
 [MESH DIMENSION]
 2
@@ -67,12 +67,9 @@ LAPLACIAN
 [LINEAR SOLVER]
 PCG
 
-# can be NONE, JACOBI, MASSMATRIX, PARALMOND, SEMFEM, MULTIGRID, or OAS
+# can be NONE only
 [PRECONDITIONER]
 NONE
-#MASSMATRIX
-#JACOBI
-#MULTIGRID
 
 ########## MULTIGRID Options ##############
 

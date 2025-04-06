@@ -83,7 +83,8 @@ void mdsAddSettings(settings_t& settings,
   settings.newSetting(prefix+"PRECONDITIONER",
                       "NONE",
                       "Preconditioning Strategy",
-                      {"NONE", "JACOBI", "MASSMATRIX", "PARALMOND", "MULTIGRID", "SEMFEM", "OAS"});
+                      {"NONE"});
+                      // {"NONE", "JACOBI", "MASSMATRIX", "PARALMOND", "MULTIGRID", "SEMFEM", "OAS"});
 
   /* MULTIGRID options */
   settings.newSetting(prefix+"MULTIGRID COARSENING",

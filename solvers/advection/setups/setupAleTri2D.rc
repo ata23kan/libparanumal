@@ -63,10 +63,15 @@ advection
 ################## MDS Options ##################
 #################################################
 
-# can be PCG, FPCG, NBPCG, NBFPCG, or PGMRES
+# can be PCG, FPCG, NBPCG, NBFPCG, PGMRES or PMINRES
 [MDS LINEAR SOLVER]
-PCG
+PMINRES
 
 [MDS DEFORMATION METHOD]
-#LAPLACIAN
-LINEARELASTIC
+LAPLACIAN
+#LINEARELASTIC
+
+# can be NONE only
+[MDS PRECONDITIONER]
+NONE
+

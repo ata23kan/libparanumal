@@ -68,7 +68,7 @@ SOFTWARE.
 #define advectionDirichletConditions2D(bc, t, x, y, nx, ny, qM, qB) \
 {                                       \
   if(bc==1|bc==3){                            \
-    *(qB) = 1.0;                        \
+    *(qB) = 0.0;                        \
   } else if(bc==2){                     \
     *(qB) = qM;                         \
   }                                     \
@@ -107,14 +107,14 @@ SOFTWARE.
 //    my = (y==2) ? (y+A*(sin(2*PI*INVWL*(x-(1+ADVECTION_SPEED_X*t))))) : y; \
 // }  \
 
-// // Initial conditions
-// #define advectionInitialConditions2D(t, x, y, q) \
-// {                                       \
-//   *(q) = exp(-8*((x-x0)*(x-x0)+(y-y0)*(y-y0)));             \
-// }
-
 // Initial conditions
 #define advectionInitialConditions2D(t, x, y, q) \
 {                                       \
-  *(q) = 1;             \
+  *(q) = exp(-8*((x-x0)*(x-x0)+(y-y0)*(y-y0)));             \
 }
+
+// // Initial conditions
+// #define advectionInitialConditions2D(t, x, y, q) \
+// {                                       \
+//   *(q) = 1;             \
+// }
