@@ -42,13 +42,19 @@ SOFTWARE.
   *(cy) = ADVECTION_SPEED_Y*q;          \
 }
 
+// Relative advection velocity for a moving domain
+#define advectionAleVelocity2D(t, x, y, meshVelx, meshVely, wx, wy) \
+{                                       \
+  *(wx) = (ADVECTION_SPEED_X-meshVelx);          \
+  *(wy) = (ADVECTION_SPEED_Y-meshVely);          \
+}
+
 // Flux function
 #define advectionAleFlux2D(t, x, y, meshVelx, meshVely, q, cx, cy) \
 {                                       \
   *(cx) = (ADVECTION_SPEED_X-meshVelx)*q;          \
   *(cy) = (ADVECTION_SPEED_Y-meshVely)*q;          \
 }
-
 
 // max wavespeed (should be max eigen of Jacobian of flux function)
 #define advectionMaxWaveSpeed2D(t, x, y, q, u, v) \
@@ -62,24 +68,36 @@ SOFTWARE.
 #define advectionDirichletConditions2D(bc, t, x, y, nx, ny, qM, qB) \
 {                                       \
   if(bc==1|bc==3){                            \
-    *(qB) = 0.0;                        \
+    *(qB) = 1.0;                        \
   } else if(bc==2){                     \
     *(qB) = qM;                         \
   }                                     \
 }
 
+// Deformation
 // Mesh boundary movement
 #define advectionMeshBoundary2D(bc, t, x, y, mx, my) \
 {  \
-   mx = x; \
+   mx = 0; \
    if(bc==1){ \
-    my=y; \
+    my=0; \
    } else if(bc==2){\
-    my = (2+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))); \
+    my = (2+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))) - y; \
    }\
 }  \
-   // my = y; \
-   // my = (y==2) ? (y+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))) : y; \
+   // my = 0; \
+
+// // Mesh boundary movement
+// #define advectionMeshBoundary2D(bc, t, x, y, mx, my) \
+// {  \
+//    mx = x; \
+//    if(bc==1){ \
+//     my=y; \
+//    } else if(bc==2){\
+//    my = y; \
+//    }\
+// }  \
+//     // my = (2+A*exp(-(x-(x0+ADVECTION_SPEED_X*t))*(x-(x0+ADVECTION_SPEED_X*t))/(2*sigma*sigma))); \
 
 // Mesh boundary movement
 
@@ -89,14 +107,14 @@ SOFTWARE.
 //    my = (y==2) ? (y+A*(sin(2*PI*INVWL*(x-(1+ADVECTION_SPEED_X*t))))) : y; \
 // }  \
 
-// Initial conditions
-#define advectionInitialConditions2D(t, x, y, q) \
-{                                       \
-  *(q) = exp(-8*((x-x0)*(x-x0)+(y-y0)*(y-y0)));             \
-}
-
 // // Initial conditions
 // #define advectionInitialConditions2D(t, x, y, q) \
 // {                                       \
-//   *(q) = 1;             \
+//   *(q) = exp(-8*((x-x0)*(x-x0)+(y-y0)*(y-y0)));             \
 // }
+
+// Initial conditions
+#define advectionInitialConditions2D(t, x, y, q) \
+{                                       \
+  *(q) = 1;             \
+}

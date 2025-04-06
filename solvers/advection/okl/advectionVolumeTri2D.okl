@@ -54,8 +54,7 @@ SOFTWARE.
       const dfloat qn = q[id];
 
       dfloat cx=0.0, cy=0.0;
-      advectionAleFlux2D(t, x[id], y[id], meshVelx[id], meshVely[id], qn, &cx, &cy);
-      // advectionFlux2D(t, x[id], y[id], qn, &cx, &cy);
+      advectionFlux2D(t, x[id], y[id], qn, &cx, &cy);
       s_F[n] = drdx*cx + drdy*cy;
       s_G[n] = dsdx*cx + dsdy*cy;
     }
@@ -80,3 +79,58 @@ SOFTWARE.
 }
 
 
+@kernel void advectionAleVolumeTri2D(const dlong Nelements,
+                                  @restrict const  dfloat *  vgeo,
+                                  @restrict const  dfloat *  D,
+                                            const  dfloat    t,
+                                  @restrict const  dfloat *  x,
+                                  @restrict const  dfloat *  y,
+                                  @restrict const  dfloat *  z,
+                                  @restrict const  dfloat *  meshVelx,
+                                  @restrict const  dfloat *  meshVely,
+                                  @restrict const  dfloat *  q,
+                                  @restrict        dfloat *  rhsq){
+
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+
+    @shared dfloat s_q[p_Np];
+
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      const dlong id = e*p_Np+n;
+      s_q[n] = q[id];
+    }    
+
+    for(int n=0;n<p_Np;++n;@inner(0)){
+
+      // prefetch geometric factors (constant on triangle)
+      const dfloat drdx = vgeo[e*p_Nvgeo + p_RXID];
+      const dfloat drdy = vgeo[e*p_Nvgeo + p_RYID];
+      const dfloat dsdx = vgeo[e*p_Nvgeo + p_SXID];
+      const dfloat dsdy = vgeo[e*p_Nvgeo + p_SYID];
+
+      dfloat dqdr = 0, dqds = 0; 
+
+      for(int i=0;i<p_Np;++i){
+        const dfloat Drni = D[n+i*p_Np+0*p_Np*p_Np];
+        const dfloat Dsni = D[n+i*p_Np+1*p_Np*p_Np];
+
+        const dfloat qn = s_q[i];
+
+        dqdr += Drni*qn;
+        dqds += Dsni*qn;
+
+      }
+
+      const dfloat dqdx = drdx*dqdr + dsdx*dqds;
+      const dfloat dqdy = drdy*dqdr + dsdy*dqds;
+
+      const dlong id = e*p_Np + n;
+      // Find the relative advection velocity
+      dfloat wx=0.0, wy=0.0;
+      advectionAleVelocity2D(t, x[id], y[id], meshVelx[id], meshVely[id], &wx, &wy);
+
+      // calculate (a-u_g) \cdot gradu and move to rhs
+      rhsq[id] = -(wx*dqdx + wy*dqdy);
+    }
+  }
+}

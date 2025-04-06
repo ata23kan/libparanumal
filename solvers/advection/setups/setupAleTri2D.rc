@@ -5,10 +5,11 @@
 data/advectionTest2D.h
 
 [MESH FILE]
-advectionTestFine2.msh
+#advectionTestFineL2.msh
 #advectionTestFine.msh
 #advectionTest.msh
 #advectionTestCoarse.msh
+bumpRect.msh
 
 [MESH DIMENSION]
 2
@@ -29,7 +30,7 @@ advectionTestFine2.msh
 -1
 
 [POLYNOMIAL DEGREE]
-5
+3
 
 [THREAD MODEL]
 CUDA
@@ -67,4 +68,5 @@ advection
 PCG
 
 [MDS DEFORMATION METHOD]
+#LAPLACIAN
 LINEARELASTIC

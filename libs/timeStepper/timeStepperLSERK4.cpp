@@ -104,6 +104,7 @@ void lserk4::Run(solver_t& solver,
   dfloat outputTime = time + outputInterval;
 
   int tstep=0;
+  dfloat aleTime;
   dfloat stepdt;
   while (time < end) {
 
@@ -117,6 +118,7 @@ void lserk4::Run(solver_t& solver,
       }
 
       stepdt = outputTime-time;
+      aleTime = stepdt;
 
       //take small time step
       Step(solver, o_q, o_pmlq, time, stepdt);
@@ -140,11 +142,19 @@ void lserk4::Run(solver_t& solver,
       stepdt = dt;
     }
 
+    aleTime = stepdt;
+    solver.MeshSolve(time, aleTime);
+
     Step(solver, o_q, o_pmlq, time, stepdt);
+    solver.UpdateX(time, aleTime);
     time += stepdt;
     tstep++;
 
-    if (tstep%5) StepCallback(solver, o_q, o_pmlq, time, stepdt);
+    // if (tstep%1==0){
+    //   aleTime = time - aleTime;
+    //   StepCallback(solver, aleTime, time, stepdt);
+    //   aleTime = time;
+    // } 
   }
 }
 
@@ -162,6 +172,9 @@ void lserk4::Step(solver_t& solver,
   for(int rk=0;rk<Nrk;++rk){
 
     dfloat currentTime = time + rkc[rk]*_dt;
+
+    // Update the geometric factors in the stage
+    solver.UpdateGeo(rkc[rk]*_dt);
 
     //evaluate ODE rhs = f(q,t)
     if (o_pmlq.has_value()) {
@@ -181,11 +194,10 @@ void lserk4::Step(solver_t& solver,
 }
 
 void lserk4::StepCallback(solver_t& solver,
-                          deviceMemory<dfloat> o_q,
-                          std::optional<deviceMemory<dfloat>> o_pmlq,
+                          dfloat aleTime,
                           dfloat time, dfloat _dt) {
 
-  solver.MeshSolve(time);
+  solver.MeshSolve(time, aleTime);
 }
 
 } //namespace TimeStepper

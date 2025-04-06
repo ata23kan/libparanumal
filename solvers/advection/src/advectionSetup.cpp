@@ -140,6 +140,12 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   o_meshVelx = platform.malloc<dfloat>(Nlocal+Nhalo);
   o_meshVely = platform.malloc<dfloat>(Nlocal+Nhalo);
 
+  o_dx = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements);
+  o_dy = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements);
+  if (mesh.dim==3){
+    o_dz = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements);
+  }
+
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
   o_q = platform.malloc<dfloat>(Nlocal+Nhalo);
@@ -195,8 +201,15 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   // Mesh Deformation kernels
   fileName   = oklFilePrefix + "advectionAleRhs" + suffix + oklFileSuffix;
-  kernelName = "aleRhs" + suffix;
-  aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+    kernelName = "aleRhsLinElastic" + suffix;
+    aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+
+    kernelName = "aleRhsLaplace" + suffix;
+    aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  }
+
 
   kernelName  = "aleBC" + suffix;
   aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
@@ -209,8 +222,11 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   updateSgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
   fileName = oklFilePrefix + "advectionInterpolateDeformation" + suffix + oklFileSuffix;
-  kernelName = "interpolateDeformation" + suffix;
-  interpolationKernel = platform.buildKernel(fileName, kernelName, kernelInfo); // kernelInfo of high order
+  kernelName = "interpolateVelocity" + suffix;
+  velInterpolationKernel = platform.buildKernel(fileName, kernelName, kernelInfo); // kernelInfo of high order
+
+  kernelName = "interpolatePosition" + suffix;
+  posInterpolationKernel = platform.buildKernel(fileName, kernelName, kernelInfo); // kernelInfo of high order
 
   // kernels from volume file
   fileName   = oklFilePrefix + "advectionVolume" + suffix + oklFileSuffix;
@@ -218,11 +234,18 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   volumeKernel =  platform.buildKernel(fileName, kernelName, kernelInfo);
 
+  kernelName = "advectionAleVolume" + suffix;
+  aleVolumeKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
   // kernels from surface file
   fileName   = oklFilePrefix + "advectionSurface" + suffix + oklFileSuffix;
   kernelName = "advectionSurface" + suffix;
 
   surfaceKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  kernelName = "advectionAleSurface" + suffix;
+  aleSurfaceKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
 
   if (mesh.dim==2) {
     fileName   = oklFilePrefix + "advectionInitialCondition2D" + oklFileSuffix;

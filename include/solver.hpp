@@ -59,6 +59,16 @@ public:
     LIBP_FORCE_ABORT("MeshSolve not implemented in this solver");
   }
 
+  // Update geometric factors
+  virtual void UpdateGeo(const dfloat rk_dt) {
+    LIBP_FORCE_ABORT("UpdateGeo not implemented in this solver");
+  }
+
+  // Update node positions
+  virtual void UpdateX(const dfloat T, const dfloat aleT) {
+    LIBP_FORCE_ABORT("UpdateX not implemented in this solver");
+  }
+
 
   //Full rhs evaluation of solver in form dq/dt = rhsf(q,t)
   virtual void rhsf(deviceMemory<dfloat>& o_q, deviceMemory<dfloat>& o_rhs, const dfloat time) {
