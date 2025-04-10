@@ -60,7 +60,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
   //buffer for local Ax
   deviceMemory<double> o_AqL = platform.reserve<double>(mesh.Np*mesh.Nelements*Nfields);
 
-  gHalo.ExchangeStart(o_q, 1);
+  gHalo.ExchangeStart(o_q, Nfields);
 
   if(mesh.NlocalGatherElements/2){
     partialAxKernel(mesh.NlocalGatherElements/2,
@@ -80,7 +80,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
   }
 
   // finalize halo exchange
-  gHalo.ExchangeFinish(o_q, 1);
+  gHalo.ExchangeFinish(o_q, Nfields);
 
   if(mesh.NglobalGatherElements) {
 

@@ -115,38 +115,22 @@ void mds_t::Run(){
   dlong Nall = Nfields*mesh.Np*(mesh.Nelements+mesh.totalHaloPairs);
 
   memory<dfloat> ruL(Nall);
-  memory<dfloat> rvL(Nall);
   memory<dfloat> xuL(Nall);
-  memory<dfloat> xvL(Nall);
+
   deviceMemory<dfloat> o_ruL = platform.reserve<dfloat>(Nall);
   deviceMemory<dfloat> o_xuL = platform.reserve<dfloat>(Nall);
   
-  // deviceMemory<dfloat> o_rvL;
-  deviceMemory<dfloat> o_xvL;
-
-  // o_rvL = platform.reserve<dfloat>(Nall);
-  // o_xvL = platform.reserve<dfloat>(Nall);
-
-  deviceMemory<dfloat> o_ru, o_rv, o_xu, o_xv;
+  deviceMemory<dfloat> o_ru, o_xu;
   dlong Ng = ogsMasked.Ngather;
   dlong Nghalo = gHalo.Nhalo;
   dlong Ngall  = Nfields*(Ng+Nghalo);
   o_ru = platform.reserve<dfloat>(Ngall);
   o_xu = platform.reserve<dfloat>(Ngall);
 
-  // if(settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-  //   o_rv = platform.reserve<dfloat>(Ngall);
-  //   o_xv = platform.reserve<dfloat>(Ngall);
-  // }
-
   mesh.MassMatrixKernelSetup(Nfields); // mass matrix operator
 
   //Set x to zero
   platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xuL);
-
-  // if(settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-  //   platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_xvL);
-  // }
 
   rhsBCKernel(mesh.Nelements,
               mesh.o_wJ,
@@ -166,42 +150,27 @@ void mds_t::Run(){
               mesh.o_z,
               o_mapB,
               o_ruL);
-              // o_rvL);
 
   // gather rhs to globalDofs if c0
   ogsMasked.Gather(o_ru, o_ruL, Nfields, ogs::Add, ogs::Trans);
   ogsMasked.Gather(o_xu, o_xuL, Nfields, ogs::Add, ogs::NoTrans);
 
-  // if(settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")){
-  //   ogsMasked.Gather(o_rv, o_rvL, Nfields, ogs::Add, ogs::Trans);
-  //   ogsMasked.Gather(o_xv, o_xvL, Nfields, ogs::Add, ogs::NoTrans);
-  // }
-
-  int maxIter = 50;
+  int maxIter = 5000;
   int verbose = settings.compareSetting("VERBOSE", "TRUE") ? 1 : 0;
 
   timePoint_t start = GlobalPlatformTime(platform);
 
   //call the solver
-  dfloat tol = (sizeof(dfloat)==sizeof(double)) ? 1.0e-3 : 1.0e-5;
+  dfloat tol = (sizeof(dfloat)==sizeof(double)) ? 1.0e-8 : 1.0e-5;
   int iter_u = Solve(linearSolver, o_xu, o_ru, tol, maxIter, verbose);
 
-  // if(settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")){
-  //   int iter_v = Solve(linearSolver, o_xv, o_rv, tol, maxIter, verbose);
-  // }
 
   //add the boundary data to the masked nodes
   // scatter x to LocalDofs if c0
   ogsMasked.Scatter(o_xuL, o_xu, Nfields, ogs::NoTrans);
 
-  // if(settings.compareSetting("DEFORMATION METHOD","LAPLACIAN")){
-  //   ogsMasked.Scatter(o_xvL, o_xv, Nfields, ogs::NoTrans);
-  // }
-
   deviceMemory<dfloat> o_Q;
   o_Q = platform.reserve<dfloat>(Nfields*mesh.Np*mesh.Nelements);
-  // if(settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
-  // }
 
   //fill masked nodes with BC data
   addBCKernel(mesh.Nelements,
@@ -210,9 +179,7 @@ void mds_t::Run(){
               mesh.o_z,
               o_mapB,
               o_Q,
-              o_xuL,
-              o_xvL);
-
+              o_xuL);
   
   timePoint_t end = GlobalPlatformTime(platform);
   double elapsedTime = ElapsedTime(start, end);
@@ -240,8 +207,6 @@ void mds_t::Run(){
     // PlotNewMesh(xuL, xvL, fname);
     PlotNewMesh2(xuL, fname);
 
-    // sprintf(fname, "%s_v_%04d.vtu", name.c_str(), mesh.rank);
-    // PlotFields(xvL, fname);
   }
 
   // output norm of final solution

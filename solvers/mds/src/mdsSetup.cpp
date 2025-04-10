@@ -38,11 +38,7 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   lambda = _lambda;
   mu = _mu;
 
-  // if (settings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-  //   Nfields = 1;
-  // } else if (settings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
-    Nfields = (mesh.dim==3) ? 3:2;
-  // }
+  Nfields = (mesh.dim==3) ? 3:2;
 
   //Trigger JIT kernel builds
   ogs::InitializeKernels(platform, ogs::Dfloat, ogs::Add);
@@ -129,18 +125,21 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   Ndofs = ogsMasked.Ngather*Nfields;
   Nhalo = gHalo.Nhalo*Nfields;
 
-  if (settings.compareSetting("PRECONDITIONER", "JACOBI"))
-    precon.Setup<JacobiPrecon>(*this);
-  else if(settings.compareSetting("PRECONDITIONER", "MASSMATRIX"))
-    precon.Setup<MassMatrixPrecon>(*this);
-  else if(settings.compareSetting("PRECONDITIONER", "PARALMOND"))
-    precon.Setup<ParAlmondPrecon>(*this);
-  else if(settings.compareSetting("PRECONDITIONER", "MULTIGRID"))
-    precon.Setup<MultiGridPrecon>(*this);
-  else if(settings.compareSetting("PRECONDITIONER", "SEMFEM"))
-    precon.Setup<SEMFEMPrecon>(*this);
-  else if(settings.compareSetting("PRECONDITIONER", "OAS"))
-    precon.Setup<OASPrecon>(*this);
-  else if(settings.compareSetting("PRECONDITIONER", "NONE"))
+  if (settings.compareSetting("PRECONDITIONER", "NONE"))
     precon.Setup<IdentityPrecon>(Ndofs);
+
+  // if (settings.compareSetting("PRECONDITIONER", "JACOBI"))
+  //   precon.Setup<JacobiPrecon>(*this);
+  // else if(settings.compareSetting("PRECONDITIONER", "MASSMATRIX"))
+  //   precon.Setup<MassMatrixPrecon>(*this);
+  // else if(settings.compareSetting("PRECONDITIONER", "PARALMOND"))
+  //   precon.Setup<ParAlmondPrecon>(*this);
+  // else if(settings.compareSetting("PRECONDITIONER", "MULTIGRID"))
+  //   precon.Setup<MultiGridPrecon>(*this);
+  // else if(settings.compareSetting("PRECONDITIONER", "SEMFEM"))
+  //   precon.Setup<SEMFEMPrecon>(*this);
+  // else if(settings.compareSetting("PRECONDITIONER", "OAS"))
+  //   precon.Setup<OASPrecon>(*this);
+  // else if(settings.compareSetting("PRECONDITIONER", "NONE"))
+  //   precon.Setup<IdentityPrecon>(Ndofs);
 }

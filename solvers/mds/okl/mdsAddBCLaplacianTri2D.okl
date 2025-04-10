@@ -30,8 +30,7 @@ SOFTWARE.
                                     @restrict const  dfloat *  z,
                                     @restrict const  int    *  mapB,
                                     @restrict dfloat  *  Q,
-                                    @restrict dfloat  *  qu,
-                                    @restrict dfloat  *  qv){
+                                    @restrict dfloat  *  qu){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
@@ -41,7 +40,6 @@ SOFTWARE.
       const int bc = mapB[n+e*p_Np];
 
       dfloat uP=0, vP=0;
-      // dfloat dudxP=0, dudyP=0, uP=0, vP=0;
 
       if(bc==1) {
         mdsBoundaryConditions2D(bc, x[iid], y[iid],
