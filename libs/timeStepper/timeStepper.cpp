@@ -44,6 +44,14 @@ void timeStepper_t::RunWithPml(solver_t& solver,
   ts->Run(solver, o_q, o_pmlq, start, end);
 }
 
+void timeStepper_t::RunWithAle(solver_t& solver,
+                               deviceMemory<dfloat>& o_q,
+                               deviceMemory<dfloat>& o_VX,
+                               dfloat start, dfloat end) {
+  assertInitialized();
+  ts->RunWithAle(solver, o_q, o_VX, start, end);
+}
+
 void timeStepper_t::SetTimeStep(dfloat dt_) {
   assertInitialized();
   ts->SetTimeStep(dt_);

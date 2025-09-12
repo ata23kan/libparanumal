@@ -59,6 +59,7 @@ public:
 
   ogs::halo_t traceHalo;
 
+  // Mesh deformation for ALE
   mdsSettings_t mdsSettings;
   mds_t mdsSolver;
   linearSolver_t<dfloat> mdsLinearSolver;
@@ -74,7 +75,8 @@ public:
 
   memory<dfloat> q, meshVelx, meshVely;
   deviceMemory<dfloat> o_q, o_meshVelx, o_meshVely;
-  deviceMemory<dfloat> o_dx, o_dy, o_dz;
+  deviceMemory<dfloat> o_VX, o_VX0;  // Vertex positions to be updated in ALE
+  deviceMemory<dfloat> o_uxV, o_uyV, o_uzV; // Mesh velocity at the verteces obtained by elliptic solve
 
   kernel_t volumeKernel;
   kernel_t surfaceKernel;
@@ -86,6 +88,10 @@ public:
   kernel_t aleRhsKernel, aleBCKernel;
   kernel_t updateVgeoKernel, updateSgeoKernel;
   kernel_t velInterpolationKernel, posInterpolationKernel;
+  kernel_t initialPositionKernel;
+  kernel_t explicitDeformationKernel;
+
+  kernel_t convertPrimitiveKernel, convertConservativeKernel;
 
   advection_t() = default;
   advection_t(platform_t &_platform, mesh_t &_mesh,
@@ -105,12 +111,11 @@ public:
 
   void rhsf(deviceMemory<dfloat>& o_q, deviceMemory<dfloat>& o_rhs, const dfloat time);
 
-  void MeshSolve(const dfloat T, const dfloat aleT);
+  void MeshSolve(deviceMemory<dfloat>& o_VX, deviceMemory<dfloat>& o_rhsX, const dfloat T);
 
-  void UpdateGeo(const dfloat rk_dt);
+  void UpdateGeo(deviceMemory<dfloat>& o_VX);
 
-  void UpdateX(const dfloat T, const dfloat aleT);
-  // void MeshSolve(const dfloat time, const dfloat dt);
+  void UpdateX(deviceMemory<dfloat>& o_VX);
 
   dfloat MaxWaveSpeed(deviceMemory<dfloat>& o_Q, const dfloat T);
 };

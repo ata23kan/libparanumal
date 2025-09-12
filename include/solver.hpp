@@ -54,18 +54,18 @@ public:
   }
 
   //Full meshsolve
-  virtual void MeshSolve(const dfloat time, const dfloat aleTime) {
-  // virtual void MeshSolve(const dfloat time, const dfloat dt) {
+  virtual void MeshSolve(deviceMemory<dfloat>& o_VX, deviceMemory<dfloat>& o_rhsX, const dfloat time) {
+  // virtual void MeshSolve(const dfloat time, const dfloat aleTime) {
     LIBP_FORCE_ABORT("MeshSolve not implemented in this solver");
   }
 
   // Update geometric factors
-  virtual void UpdateGeo(const dfloat rk_dt) {
+  virtual void UpdateGeo(deviceMemory<dfloat>& o_VX) {
     LIBP_FORCE_ABORT("UpdateGeo not implemented in this solver");
   }
 
   // Update node positions
-  virtual void UpdateX(const dfloat T, const dfloat aleT) {
+  virtual void UpdateX(deviceMemory<dfloat>& o_VX) {
     LIBP_FORCE_ABORT("UpdateX not implemented in this solver");
   }
 

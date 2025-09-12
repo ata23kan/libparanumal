@@ -25,10 +25,8 @@ SOFTWARE.
 */
 
 @kernel void interpolateVelocityTri2D(const dlong Nelements,
-																			const dfloat invaleT,
 																			@restrict const dfloat *  IM,
-																			@restrict       dfloat *  dx,
-																			@restrict       dfloat *  dy,
+																			@restrict       dfloat *  rhsX,
 																			@restrict       dfloat *  x,
 																			@restrict       dfloat *  y,
 																			@restrict       dfloat *  z,
@@ -37,14 +35,14 @@ SOFTWARE.
 
 	for(int e=0;e<Nelements;e++;@outer(0)){
 
-		@shared dfloat s_dx[p_NpN1];
-		@shared dfloat s_dy[p_NpN1];
+		@shared dfloat s_vx[p_NpN1];
+		@shared dfloat s_vy[p_NpN1];
 
 		for(int n=0;n<p_Np;++n;@inner(0)){
 			if(n<p_NpN1){
-				const dlong id = n + e*p_NpN1;
-				s_dx[n] = dx[id];
-				s_dy[n] = dy[id];
+				const dlong id = n + e*p_NpN1*p_NfieldsN1;
+				s_vx[n] = rhsX[id+0*p_NpN1];
+				s_vy[n] = rhsX[id+1*p_NpN1];
 			}
 		}
 
@@ -55,13 +53,13 @@ SOFTWARE.
 
 			#pragma unroll p_NpN1
 				for(int i=0;i<p_NpN1;i++){
-					mQ_x += IM[i+n*p_NpN1]*s_dx[i];
-					mQ_y += IM[i+n*p_NpN1]*s_dy[i];
+					mQ_x += IM[i+n*p_NpN1]*s_vx[i];
+					mQ_y += IM[i+n*p_NpN1]*s_vy[i];
 				}
 
 			const dlong id = e*p_Np + n;
-			meshVelx[id] = mQ_x*invaleT;
-			meshVely[id] = mQ_y*invaleT;
+			meshVelx[id] = mQ_x;
+			meshVely[id] = mQ_y;
 		}
 
 	}  // end element loop
@@ -69,10 +67,8 @@ SOFTWARE.
 
 
 @kernel void interpolatePositionTri2D(const dlong Nelements,
-																			const dfloat invaleT,
 																			@restrict const dfloat *  IM,
-																			@restrict       dfloat *  dx,
-																			@restrict       dfloat *  dy,
+																			@restrict       dfloat *  VX,
 																			@restrict       dfloat *  N1x,
 																			@restrict       dfloat *  N1y,
 																			@restrict       dfloat *  N1z,
@@ -82,17 +78,17 @@ SOFTWARE.
 
 	for(int e=0;e<Nelements;e++;@outer(0)){
 
-		@shared dfloat s_dx[p_NpN1];
-		@shared dfloat s_dy[p_NpN1];
+		@shared dfloat s_x[p_NpN1];
+		@shared dfloat s_y[p_NpN1];
 
 		for(int n=0;n<p_Np;++n;@inner(0)){
 			if(n<p_NpN1){
-				const dlong id = n + e*p_NpN1;
-				s_dx[n] = dx[id];
-				s_dy[n] = dy[id];
+				const dlong id = n + e*p_NpN1*p_NfieldsN1;
+				s_x[n] = VX[id+0*p_NpN1];
+				s_y[n] = VX[id+1*p_NpN1];
 
-				N1x[id] += dx[id];
-				N1y[id] += dx[id];
+				N1x[id] = VX[id+0*p_NpN1];
+				N1y[id] = VX[id+1*p_NpN1];
 			}
 		}
 
@@ -103,13 +99,13 @@ SOFTWARE.
 
 			#pragma unroll p_NpN1
 				for(int i=0;i<p_NpN1;i++){
-					mQ_x += IM[i+n*p_NpN1]*s_dx[i];
-					mQ_y += IM[i+n*p_NpN1]*s_dy[i];
+					mQ_x += IM[i+n*p_NpN1]*s_x[i];
+					mQ_y += IM[i+n*p_NpN1]*s_y[i];
 				}
 
 			const dlong id = e*p_Np + n;
-			x[id] += mQ_x;
-			y[id] += mQ_y;
+			x[id] = mQ_x;
+			y[id] = mQ_y;
 
 		}
 	}

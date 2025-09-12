@@ -60,6 +60,11 @@ class timeStepper_t {
                   deviceMemory<dfloat>& o_pmlq,
                   dfloat start, dfloat end);
 
+  void RunWithAle(solver_t& solver,
+                  deviceMemory<dfloat>& o_q,
+                  deviceMemory<dfloat>& o_VX,
+                  dfloat start, dfloat end);
+
   void SetTimeStep(dfloat dt_);
 
   dfloat GetTimeStep();
@@ -81,6 +86,7 @@ public:
   comm_t comm;
 
   dlong N;
+  dlong NAle;
   dlong Nhalo;
   dlong Npml;
 
@@ -92,6 +98,7 @@ public:
     platform(_platform),
     comm(_comm),
     N(Nelements*Np*Nfields),
+    NAle(Nelements*3*2), // -> Hard coded for tris, Nverts=3, Nfields=dim=2 -AA
     Nhalo(NhaloElements*Np*Nfields),
     Npml(NpmlElements*Np*Npmlfields) {}
 
@@ -99,6 +106,13 @@ public:
                    deviceMemory<dfloat> o_q,
                    std::optional<deviceMemory<dfloat>> o_pmlq,
                    dfloat start, dfloat end)=0;
+
+  virtual void RunWithAle(solver_t& solver,
+                          deviceMemory<dfloat> o_q,
+                          deviceMemory<dfloat> o_VX,
+                          dfloat start, dfloat end){
+    LIBP_FORCE_ABORT("RunWithAle not supported in this solver!");
+  }
 
   void SetTimeStep(dfloat dt_) {dt = dt_;};
 
@@ -155,9 +169,10 @@ protected:
             std::optional<deviceMemory<dfloat>> o_pmlq,
             dfloat time, dfloat dt);
 
-  void StepCallback(solver_t& solver,
-                    dfloat aleTime,
-                    dfloat time, dfloat dt);
+  void ALEStep(solver_t& solver,
+               deviceMemory<dfloat> o_q,
+               deviceMemory<dfloat> o_VX,
+               dfloat time, dfloat dt);
 
 public:
   lserk4(dlong Nelements, dlong NhaloElements,
@@ -171,6 +186,11 @@ public:
            deviceMemory<dfloat> o_q,
            std::optional<deviceMemory<dfloat>> o_pmlq,
            dfloat start, dfloat end);
+
+  void RunWithAle(solver_t& solver,
+                  deviceMemory<dfloat> o_q,
+                  deviceMemory<dfloat> o_VX,
+                  dfloat start, dfloat end);
 };
 
 /* Dormand-Prince method */

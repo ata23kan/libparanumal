@@ -40,17 +40,17 @@ SOFTWARE.
                         @restrict const  int    *  mapB,
                         @restrict dfloat        *  rhs){
 
-	for(int e=0;e<Nelements;e++;@outer(0)){
+  for(int e=0;e<Nelements;e++;@outer(0)){
 
-		@shared dfloat s_q[p_Nfields][p_Np];
+    @shared dfloat s_q[p_Nfields][p_Np];
 
-		for(int n=0;n<p_Nmax;++n;@inner(0)){
-			if(n<p_Np){
-				for(int fld=0;fld<p_Nfields;fld++){
-					s_q[fld][n]=0.;
-				}
-			}
-		}
+    for(int n=0;n<p_Nmax;++n;@inner(0)){
+      if(n<p_Np){
+        for(int fld=0;fld<p_Nfields;fld++){
+          s_q[fld][n]=0.;
+        }
+      }
+    }
 
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_NfacesNfp){
@@ -64,7 +64,7 @@ SOFTWARE.
         const int bc = mapB[idM];
         if(bc>0) {
           advectionMeshBoundary2D(bc, t, x[idM], y[idM], 
-                                  mxP, myP);
+                                  &mxP, &myP);
         }
 
         s_q[0][nid] = mxP;
@@ -132,8 +132,8 @@ SOFTWARE.
       }
     }
 
-	}	// end element loop
-}		// end kernel aleRhsTri2D
+  } // end element loop
+}   // end kernel aleRhsTri2D
 
 @kernel void aleRhsLaplaceTri2D(const dlong Nelements,
                         @restrict const  dfloat *  wJ,
@@ -177,7 +177,7 @@ SOFTWARE.
         const int bc = mapB[idM];
         if(bc>0) {
           advectionMeshBoundary2D(bc, t, x[idM], y[idM], 
-                                  mxP, myP);
+                                  &mxP, &myP);
         }
         s_q[0][nid] = mxP;
         s_q[1][nid] = myP;
@@ -225,13 +225,12 @@ SOFTWARE.
 
 
 @kernel void aleBCTri2D(const int Nelements,
-                       @restrict       dfloat * x,
-                       @restrict       dfloat * y,
-                       @restrict       dfloat * z,
+                       @restrict const dfloat * x,
+                       @restrict const dfloat * y,
+                       @restrict const dfloat * z,
                                  const dfloat   t,
                        @restrict const int    * mapB,
-                       @restrict dfloat  * dx,
-                       @restrict dfloat  * dy,
+                       @restrict dfloat  * rhsX,
                        @restrict dfloat  * q){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
@@ -244,12 +243,10 @@ SOFTWARE.
       dfloat mxP=0, myP=0;
 
       if(bc>0){
-      // if(bc==1){
         advectionMeshBoundary2D(bc, t, x[iid], y[iid],
-                                mxP, myP);
+                                &mxP, &myP);
         q[id+0] = mxP;
         q[id+1] = myP;
-        // printf("Boundary!!!");
       }
     }
   }
@@ -258,11 +255,14 @@ SOFTWARE.
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
 
-      const dlong id  = n+e*p_Np;
+      const dlong id  = n+e*p_Np*p_Nfields;
       const dlong iid = n*p_Nfields+e*p_Np*p_Nfields;
 
-      dx[id] = q[iid+0];
-      dy[id] = q[iid+1];
+      rhsX[id+0*p_Np] = q[iid+0];  // X velocity
+      rhsX[id+1*p_Np] = q[iid+1];  // Y Velocity
+
+      // qx[id] = q[iid+0];
+      // qy[id] = q[iid+1];
     }
   }
 }   // end kernel aleBCTri2D

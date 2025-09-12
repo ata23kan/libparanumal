@@ -26,15 +26,12 @@ SOFTWARE.
 
 #include "advection.hpp"
 
-void advection_t::UpdateX(const dfloat T, const dfloat aleT){
+void advection_t::UpdateX(deviceMemory<dfloat>& o_Vx){
 
-	dfloat invaleT = 1/aleT;
 
 	posInterpolationKernel(mesh.Nelements,
-												invaleT,
 												o_IM,
-												o_dx,
-												o_dy,
+												o_Vx,
 												meshN1.o_x,
 												meshN1.o_y,
 												meshN1.o_z,

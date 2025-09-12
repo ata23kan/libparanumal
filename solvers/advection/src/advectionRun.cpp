@@ -39,6 +39,17 @@ void advection_t::Run(){
                          mesh.o_z,
                          o_q);
 
+
+  initialPositionKernel(mesh.Nelements,
+                        meshN1.o_x,
+                        meshN1.o_y,
+                        meshN1.o_z,
+                        o_VX);
+
+  // Hold the initial positions for explicit deformation
+  int NAle = meshN1.Np*meshN1.Nelements*mdsNfields;
+  o_VX0.copyFrom(o_VX, NAle, 0, properties_t("async", true));
+
   dfloat cfl=1.0;
   settings.getSetting("CFL NUMBER", cfl);
 
@@ -48,8 +59,8 @@ void advection_t::Run(){
   dfloat dt = cfl/(vmax*(mesh.N+1.)*(mesh.N+1.));
   timeStepper.SetTimeStep(dt);
 
-  // timeStepper.Run(*this, o_q, o_meshVel, startTime, finalTime);
-  timeStepper.Run(*this, o_q, startTime, finalTime);
+  timeStepper.RunWithAle(*this, o_q, o_VX, startTime, finalTime);
+  // timeStepper.Run(*this, o_q, startTime, finalTime);
 
   // output norm of final solution
   {

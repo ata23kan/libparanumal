@@ -106,6 +106,4 @@ void advection_t::rhsf(deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_RHS, c
                    o_meshVely,
                    o_Q,
                    o_RHS);
-
-  // std::exit(EXIT_SUCCESS);
 }

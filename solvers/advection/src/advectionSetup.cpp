@@ -48,16 +48,22 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   traceHalo = mesh.HaloTraceSetup(1); //one field
 
   //setup timeStepper
-  if (settings.compareSetting("TIME INTEGRATOR","AB3")){
-    timeStepper.Setup<TimeStepper::ab3>(mesh.Nelements,
-                                        mesh.totalHaloPairs,
-                                        mesh.Np, 1, platform, comm);
-  } else if (settings.compareSetting("TIME INTEGRATOR","LSERK4")){
+  // if (settings.compareSetting("TIME INTEGRATOR","AB3")){
+  //   timeStepper.Setup<TimeStepper::ab3>(mesh.Nelements,
+  //                                       mesh.totalHaloPairs,
+  //                                       mesh.Np, 1, platform, comm);
+  // } else if (settings.compareSetting("TIME INTEGRATOR","LSERK4")){
+  //   timeStepper.Setup<TimeStepper::lserk4>(mesh.Nelements,
+  //                                          mesh.totalHaloPairs,
+  //                                          mesh.Np, 1, platform, comm);
+  // } else if (settings.compareSetting("TIME INTEGRATOR","DOPRI5")){
+  //   timeStepper.Setup<TimeStepper::dopri5>(mesh.Nelements,
+  //                                          mesh.totalHaloPairs,
+  //                                          mesh.Np, 1, platform, comm);
+  // }
+
+  if (settings.compareSetting("TIME INTEGRATOR","LSERK4")){
     timeStepper.Setup<TimeStepper::lserk4>(mesh.Nelements,
-                                           mesh.totalHaloPairs,
-                                           mesh.Np, 1, platform, comm);
-  } else if (settings.compareSetting("TIME INTEGRATOR","DOPRI5")){
-    timeStepper.Setup<TimeStepper::dopri5>(mesh.Nelements,
                                            mesh.totalHaloPairs,
                                            mesh.Np, 1, platform, comm);
   }
@@ -82,28 +88,10 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   // linAlg_t::matrixTranspose(mesh.Np, meshN1.Np, IM, meshN1.Np, IMT, mesh.Np);
   o_IM = platform.malloc<dfloat>(IM);
 
-  // for(int m=0; m<mesh.Np;m++){
-  //   for(int n=0;n<meshN1.Np;n++){
-  //     int id = m*meshN1.Np + n;
-  //     printf("%f ", IM[id]);
-  //   }
-  //   printf("\n");
-  // }
-
-  // printf("\n");
-  // for(int m=0; m<meshN1.Np;m++){
-  //   for(int n=0;n<mesh.Np;n++){
-  //     int id = m*mesh.Np + n;
-  //     printf("%f ", IMT[id]);
-  //   }
-  //   printf("\n");
-  // }
-  // std::exit(EXIT_SUCCESS);
-
   mdsSettings = _settings.extractMdsSettings();
 
-  lambda = 1.0;
-  mu = 0.35;
+  lambda = 1.0; // TODO: Why are these not coming from the settings -AA
+  mu = 0.35;    // TODO: Why are these not coming from the settings -AA
 
   mdsSolver.Setup(platform, meshN1, mdsSettings,
                   lambda, mu, NBCTypes, mdsBCType);
@@ -140,11 +128,14 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   o_meshVelx = platform.malloc<dfloat>(Nlocal+Nhalo);
   o_meshVely = platform.malloc<dfloat>(Nlocal+Nhalo);
 
-  o_dx = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements);
-  o_dy = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements);
-  if (mesh.dim==3){
-    o_dz = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements);
-  }
+  // o_uxV = platform.malloc<dfloat>(meshN1.Np*meshN1.Nelements);
+  // o_uyV = platform.malloc<dfloat>(meshN1.Np*meshN1.Nelements);
+  // if (mesh.dim==3){
+  //   o_uzV = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements);
+  // }
+
+  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
+  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
 
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
@@ -193,13 +184,14 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   std::string fileName, kernelName;
 
-  kernelInfo["defines/ p_Nfields"] = mdsNfields;
+  kernelInfo["defines/ p_NfieldsN1"] = mdsNfields;
   kernelInfoN1["defines/ p_Nfields"] = mdsNfields;
 
   int Nmax = std::max(meshN1.Np, meshN1.Nfaces*meshN1.Nfp);
   kernelInfoN1["defines/" "p_Nmax"]= Nmax;
 
   // Mesh Deformation kernels
+  // fileName   = oklFilePrefix + "advectionBackup" + suffix + oklFileSuffix;
   fileName   = oklFilePrefix + "advectionAleRhs" + suffix + oklFileSuffix;
   if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
     kernelName = "aleRhsLinElastic" + suffix;
@@ -210,7 +202,7 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
     aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
   }
 
-
+  // ALE Kernels
   kernelName  = "aleBC" + suffix;
   aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
 
@@ -228,6 +220,10 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   kernelName = "interpolatePosition" + suffix;
   posInterpolationKernel = platform.buildKernel(fileName, kernelName, kernelInfo); // kernelInfo of high order
 
+  fileName  = oklFilePrefix + "advectionExplicitDeformation" + suffix + oklFileSuffix;
+  kernelName = "explicitDeformation" + suffix;
+  explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+
   // kernels from volume file
   fileName   = oklFilePrefix + "advectionVolume" + suffix + oklFileSuffix;
   kernelName = "advectionVolume" + suffix;
@@ -235,6 +231,7 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   volumeKernel =  platform.buildKernel(fileName, kernelName, kernelInfo);
 
   kernelName = "advectionAleVolume" + suffix;
+  // kernelName = "advectionAleConsVolume" + suffix;
   aleVolumeKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
   // kernels from surface file
@@ -244,7 +241,18 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   surfaceKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
   kernelName = "advectionAleSurface" + suffix;
+  // kernelName = "advectionAleConsSurface" + suffix;
   aleSurfaceKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  // Switch between conservative variable and the physical solution
+  fileName   = oklFilePrefix + "advectionConvertAle" + suffix + oklFileSuffix;
+  kernelName = "advectionConvertConservativeAle" + suffix;
+
+  convertConservativeKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  kernelName = "advectionConvertPrimitiveAle" + suffix;
+
+  convertPrimitiveKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
 
   if (mesh.dim==2) {
@@ -256,6 +264,9 @@ void advection_t::Setup(platform_t& _platform, mesh_t& _mesh,
   }
 
   initialConditionKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  kernelName = "advectionInitialPosition2D";
+  initialPositionKernel  = platform.buildKernel(fileName, kernelName, kernelInfo);
 
   fileName   = oklFilePrefix + "advectionMaxWaveSpeed" + suffix + oklFileSuffix;
   kernelName = "advectionMaxWaveSpeed" + suffix;

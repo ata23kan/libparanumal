@@ -25,74 +25,120 @@ SOFTWARE.
 */
 
 #include "advection.hpp"
+#define PI 3.14159265
 
-// Find the mesh velocity and update the geometric factors
-void advection_t::MeshSolve(const dfloat T, const dfloat aleT){
+// Find the mesh velocity and update the rhs of the position ODE
+void advection_t::MeshSolve(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, const dfloat T){
 // void advection_t::MeshSolve(const dfloat T, const dfloat dt){
 
-	dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
+  // 1 for elliptic solve, 2 for explicit functions
+  int TESTCASE = 2;
 
-	deviceMemory<dfloat> o_rhs = platform.reserve<dfloat>(Ntotal);
-	deviceMemory<dfloat> o_xL = platform.reserve<dfloat>(Ntotal);
+  switch (TESTCASE){
 
-  // set x to zero
-  platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_xL);
-  platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhs);
+  default:
+  case 1:{
+    dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
 
-  aleRhsKernel(mesh.Nelements,
-               meshN1.o_wJ,
-               meshN1.o_ggeo,
-               meshN1.o_vgeo,
-               meshN1.o_S,
-               meshN1.o_Se,
-               meshN1.o_vmapM,
-               lambda,
-               mu,
-               T,
-               meshN1.o_x,
-               meshN1.o_y,
-               meshN1.o_z,
-               mdsSolver.o_mapB,
-               o_rhs);
+    deviceMemory<dfloat> o_rhsV = platform.reserve<dfloat>(Ntotal);
+    deviceMemory<dfloat> o_vL   = platform.reserve<dfloat>(Ntotal);
 
-  int maxIter = 5000;
-  int verbose = 0;
+    // set x to zero
+    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_vL);
+    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsV);
 
-  deviceMemory<dfloat> o_Grhs = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-  deviceMemory<dfloat> o_Gx   = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-  mdsSolver.ogsMasked.Gather(o_Grhs, o_rhs, mdsNfields, ogs::Add, ogs::Trans);
-  mdsSolver.ogsMasked.Gather(o_Gx, o_xL, mdsNfields, ogs::Add, ogs::NoTrans);
-  Niter = mdsSolver.Solve(mdsLinearSolver, o_Gx, o_Grhs, mdsTOL, maxIter, verbose);
-  mdsSolver.ogsMasked.Scatter(o_xL, o_Gx, mdsNfields, ogs::NoTrans);
-  o_Grhs.free(); o_Gx.free();
+    aleRhsKernel(mesh.Nelements,
+                 meshN1.o_wJ,
+                 meshN1.o_ggeo,
+                 meshN1.o_vgeo,
+                 meshN1.o_S,
+                 meshN1.o_Se,
+                 meshN1.o_vmapM,
+                 lambda,
+                 mu,
+                 T,
+                 meshN1.o_x,
+                 meshN1.o_y,
+                 meshN1.o_z,
+                 mdsSolver.o_mapB,
+                 o_rhsV);
 
-  aleBCKernel(meshN1.Nelements,
-              meshN1.o_x,
-              meshN1.o_y,
-              meshN1.o_z,
-              T,
-              mdsSolver.o_mapB,
-              o_dx,
-              o_dy,
-              o_xL); 
+    int maxIter = 5000;
+    int verbose = 0;
 
-  platform.linAlg().axpy(meshN1.Nelements*meshN1.Np, 1.0, o_dx, 1.0, meshN1.o_x);  // update the vertex positions
-  platform.linAlg().axpy(meshN1.Nelements*meshN1.Np, 1.0, o_dy, 1.0, meshN1.o_y);  // update the vertex positions
+    // Create gather arrays
+    deviceMemory<dfloat> o_GrhsV = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    deviceMemory<dfloat> o_Gv    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
 
-  platform.linAlg().set(meshN1.Nelements*meshN1.Np, (dfloat)0.0, o_meshVelx);  // make sure the mesh velocity is zero
-  platform.linAlg().set(meshN1.Nelements*meshN1.Np, (dfloat)0.0, o_meshVely);  // make sure the mesh velocity is zero
+    // Gather - Solve - Scatter
+    mdsSolver.ogsMasked.Gather(o_GrhsV, o_rhsV, mdsNfields, ogs::Add, ogs::Trans);
+    mdsSolver.ogsMasked.Gather(o_Gv, o_vL, mdsNfields, ogs::Add, ogs::NoTrans);
+    Niter = mdsSolver.Solve(mdsLinearSolver, o_Gv, o_GrhsV, mdsTOL, maxIter, verbose);
+    printf("Total Number of Iterations: %d\n", Niter);
+    mdsSolver.ogsMasked.Scatter(o_vL, o_Gv, mdsNfields, ogs::NoTrans);
+    o_GrhsV.free(); o_Gv.free();
 
-  dfloat invaleT = 1/aleT;
-  velInterpolationKernel(mesh.Nelements,
-                      invaleT,
-                      o_IM,
-                      o_dx,
-                      o_dy,
-                      mesh.o_x,
-                      mesh.o_y,
-                      mesh.o_z,
-                      o_meshVelx,
-                      o_meshVely);
 
+    aleBCKernel(meshN1.Nelements,
+                meshN1.o_x,
+                meshN1.o_y,
+                meshN1.o_z,
+                T,
+                mdsSolver.o_mapB,
+                o_rhsX,
+                o_vL); 
+
+    // Interpolate vertex velocities to the computational nodes
+    velInterpolationKernel(mesh.Nelements,
+                           o_IM,
+                           o_rhsX,
+                           mesh.o_x,
+                           mesh.o_y,
+                           mesh.o_z,
+                           o_meshVelx,
+                           o_meshVely);  
+  } // end case 1
+
+  case 2:{
+
+    const dlong nx = 1;
+    const dlong ny = 1;
+    const dlong nt = 1;
+    const dlong Lx = 20;  // BOX DIMX
+    const dlong Ly = 20;  // BOX DIMY
+    const dfloat t0 = sqrt(50);
+    const dfloat Ax = 0.5;
+    const dfloat Ay = 0.5;
+
+    const dfloat omega = 2 * PI * nt / t0;
+    // const dfloat S     = sin(omega * T);
+    const dfloat kx    = 2 * PI * nx / Lx;
+    const dfloat ky    = 2 * PI * ny / Ly;
+
+    // Explicit deformation
+    explicitDeformationKernel(mesh.Nelements,
+                              T,
+                              Ax,
+                              Ay,
+                              kx,
+                              ky,
+                              omega,
+                              o_VX0,
+                              o_rhsX,
+                              o_Vx);    
+
+
+    // Interpolate vertex velocities to the computational nodes
+    velInterpolationKernel(mesh.Nelements,
+                           o_IM,
+                           o_rhsX,
+                           mesh.o_x,
+                           mesh.o_y,
+                           mesh.o_z,
+                           o_meshVelx,
+                           o_meshVely);  
+  } // end case 2
+
+  } // end switch
 
 }

@@ -27,9 +27,7 @@ SOFTWARE.
 
 #define p_blockSize 256
 @kernel void updateVgeoTri2D(const dlong Nelements,
-														@restrict const dfloat * Vx,
-														@restrict const dfloat * Vy,
-														@restrict const dfloat * Vz,
+														@restrict const dfloat * VX,
 														@restrict 			dfloat * N1wJ,
 														@restrict 			dfloat * N1vgeo,
 														@restrict 			dfloat * N1ggeo,
@@ -39,15 +37,15 @@ SOFTWARE.
 	
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
 
-		const dlong id = e*p_NpN1;
+		const dlong id = e*p_NpN1*p_NfieldsN1;
 
-		const dfloat xe1 = Vx[id+0];
-		const dfloat xe2 = Vx[id+1];
-		const dfloat xe3 = Vx[id+2];
+		const dfloat xe1 = VX[id+0];
+		const dfloat xe2 = VX[id+1];
+		const dfloat xe3 = VX[id+2];
 
-		const dfloat ye1 = Vy[id+0];
-		const dfloat ye2 = Vy[id+1];
-		const dfloat ye3 = Vy[id+2];
+		const dfloat ye1 = VX[id+3];
+		const dfloat ye2 = VX[id+4];
+		const dfloat ye3 = VX[id+5];
 
 		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
 		const dfloat rx =  (0.5/J)*(ye3-ye1);
@@ -87,23 +85,21 @@ SOFTWARE.
 } // End ggeo kernel
 
 @kernel void updateSgeoTri2D(const dlong Nelements,
-														@restrict const dfloat * Vx, 
-														@restrict const dfloat * Vy, 
-														@restrict const dfloat * Vz, 
+														@restrict const dfloat * VX, 
 														@restrict 			dfloat * N1sgeo,
 														@restrict 			dfloat * sgeo){
 
 	for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
 
-		const dlong id = e*p_NpN1;
+		const dlong id = e*p_NpN1*p_NfieldsN1;
 
-		const dfloat xe1 = Vx[id+0];
-		const dfloat xe2 = Vx[id+1];
-		const dfloat xe3 = Vx[id+2];
+		const dfloat xe1 = VX[id+0];
+		const dfloat xe2 = VX[id+1];
+		const dfloat xe3 = VX[id+2];
 
-		const dfloat ye1 = Vy[id+0];
-		const dfloat ye2 = Vy[id+1];
-		const dfloat ye3 = Vy[id+2];
+		const dfloat ye1 = VX[id+3];
+		const dfloat ye2 = VX[id+4];
+		const dfloat ye3 = VX[id+5];
 
 
 		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));

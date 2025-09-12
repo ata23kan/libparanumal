@@ -104,7 +104,6 @@ void lserk4::Run(solver_t& solver,
   dfloat outputTime = time + outputInterval;
 
   int tstep=0;
-  dfloat aleTime;
   dfloat stepdt;
   while (time < end) {
 
@@ -118,7 +117,6 @@ void lserk4::Run(solver_t& solver,
       }
 
       stepdt = outputTime-time;
-      aleTime = stepdt;
 
       //take small time step
       Step(solver, o_q, o_pmlq, time, stepdt);
@@ -142,19 +140,9 @@ void lserk4::Run(solver_t& solver,
       stepdt = dt;
     }
 
-    aleTime = stepdt;
-    solver.MeshSolve(time, aleTime);
-
     Step(solver, o_q, o_pmlq, time, stepdt);
-    solver.UpdateX(time, aleTime);
     time += stepdt;
     tstep++;
-
-    // if (tstep%1==0){
-    //   aleTime = time - aleTime;
-    //   StepCallback(solver, aleTime, time, stepdt);
-    //   aleTime = time;
-    // } 
   }
 }
 
@@ -173,9 +161,6 @@ void lserk4::Step(solver_t& solver,
 
     dfloat currentTime = time + rkc[rk]*_dt;
 
-    // Update the geometric factors in the stage
-    solver.UpdateGeo(rkc[rk]*_dt);
-
     //evaluate ODE rhs = f(q,t)
     if (o_pmlq.has_value()) {
       solver.rhsf_pml(o_q, o_pmlq.value(), o_rhsq, o_rhspmlq, currentTime);
@@ -193,12 +178,114 @@ void lserk4::Step(solver_t& solver,
   }
 }
 
-void lserk4::StepCallback(solver_t& solver,
-                          dfloat aleTime,
-                          dfloat time, dfloat _dt) {
 
-  solver.MeshSolve(time, aleTime);
+void lserk4::RunWithAle(solver_t& solver,
+                 deviceMemory<dfloat> o_q,
+                 deviceMemory<dfloat> o_VX,
+                 dfloat start, dfloat end) {
+
+  /*Pre-reserve memory pool space to avoid some unnecessary re-sizing*/
+  platform.reserve<dfloat>(3 * N + 3 * Npml
+                           + 6 * platform.memPoolAlignment<dfloat>());
+
+  dfloat time = start;
+
+  solver.Report(time,0);
+
+  dfloat outputInterval=0.0;
+  solver.settings.getSetting("OUTPUT INTERVAL", outputInterval);
+
+  dfloat outputTime = time + outputInterval;
+
+  int tstep=0;
+  dfloat stepdt;
+  while (time < end) {
+
+    if (time<outputTime && time+dt>=outputTime) {
+      //save current state
+      deviceMemory<dfloat> o_saveq  = platform.reserve<dfloat>(N);
+      deviceMemory<dfloat> o_saveVX = platform.reserve<dfloat>(NAle);
+      o_saveq.copyFrom(o_q, N, 0, properties_t("async", true));
+      o_saveVX.copyFrom(o_VX, NAle, 0, properties_t("async", true));
+
+      stepdt = outputTime-time;
+
+      // TODO: The Step function below will move the mesh
+      //       The mesh state should be saved as o_saveq
+
+      //take small time step
+      // Step(solver, o_q, o_pmlq, o_VX, time, stepdt);
+      ALEStep(solver, o_q, o_VX, time, stepdt);
+
+      //report state
+      solver.Report(outputTime,tstep);
+
+      //restore previous state
+      o_q.copyFrom(o_saveq, N, 0, properties_t("async", true));
+      o_VX.copyFrom(o_saveVX, NAle, 0, properties_t("async", true));
+
+      outputTime += outputInterval;
+    }
+
+    //check for final timestep
+    if (time+dt > end){
+      stepdt = end-time;
+    } else {
+      stepdt = dt;
+    }
+
+    // Step(solver, o_q, o_pmlq, time, stepdt);
+    ALEStep(solver, o_q, o_VX, time, stepdt);
+    time += stepdt;
+    tstep++;
+  }
 }
+
+void lserk4::ALEStep(solver_t& solver,
+                     deviceMemory<dfloat> o_q,
+                     deviceMemory<dfloat> o_VX,
+                     dfloat time, dfloat _dt) {
+
+  deviceMemory<dfloat> o_resq = platform.reserve<dfloat>(N);
+  deviceMemory<dfloat> o_rhsq = platform.reserve<dfloat>(N);
+
+  deviceMemory<dfloat> o_resX = platform.reserve<dfloat>(NAle);
+  deviceMemory<dfloat> o_rhsX = platform.reserve<dfloat>(NAle);
+
+  // Procedure
+  // 1. Find the mesh velocity at the vertices and interpolate to the
+  //    interpolation nodes
+  // 2. Update vertex positions using Runge-Kutta
+  // 3. Update surface/volume geometric factors
+  // 4. Compute rhs 
+  // 5. Update solution using Runge-Kutta
+
+  // Low storage explicit Runge Kutta (5 stages, 4th order)
+  for(int rk=0;rk<Nrk;++rk){
+
+    dfloat currentTime = time + rkc[rk]*_dt;
+
+    // Find the mesh velocity at the vertices
+    solver.MeshSolve(o_VX, o_rhsX, currentTime);
+
+    // // Update the positions using Runge-Kutta
+    updateKernel(NAle, _dt, rka[rk], rkb[rk],
+                 o_rhsX, o_resX, o_VX);
+
+    // Update the geometric factors in the stage
+    solver.UpdateGeo(o_VX);
+
+    // Update interpolation nodes
+    solver.UpdateX(o_VX);
+
+    solver.rhsf(o_q, o_rhsq, currentTime);
+
+    // update solution using Runge-Kutta
+    updateKernel(N, _dt, rka[rk], rkb[rk],
+                 o_rhsq, o_resq, o_q);
+  }
+}
+
 
 } //namespace TimeStepper
 
