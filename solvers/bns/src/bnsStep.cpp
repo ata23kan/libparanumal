@@ -31,6 +31,60 @@ dfloat bns_t::MaxWaveSpeed(){
   return vmax;
 }
 
+void bns_t::rhsf(deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_RHS, const dfloat T){
+
+  // extract q trace halo and start exchange
+  traceHalo.ExchangeStart(o_Q, 1);
+
+  aleVolumeKernel(mesh.NnonPmlElements,
+                  mesh.o_nonPmlElements,
+                  mesh.o_vgeo,
+                  mesh.o_D,
+                  mesh.o_x,
+                  mesh.o_y,
+                  mesh.o_z,
+                  o_meshVelx,
+                  o_meshVely,
+                  T,
+                  c,
+                  nu,
+                  o_Q,
+                  o_RHS);
+
+  relaxationKernel(mesh.NnonPmlElements,
+                   mesh.o_nonPmlElements,
+                   mesh.o_vgeo,
+                   mesh.o_cubvgeo,
+                   mesh.o_cubInterp,
+                   mesh.o_cubProject,
+                   semiAnalytic,
+                   tauInv,
+                   o_Q,
+                   o_RHS);
+
+  traceHalo.ExchangeFinish(o_Q, 1);
+
+
+  aleSurfaceKernel(mesh.NnonPmlElements,
+                   mesh.o_nonPmlElements,
+                   mesh.o_sgeo,
+                   mesh.o_LIFT,
+                   mesh.o_vmapM,
+                   mesh.o_vmapP,
+                   mesh.o_EToB,
+                   mesh.o_x,
+                   mesh.o_y,
+                   mesh.o_z,
+                   o_meshVelx,
+                   o_meshVely,
+                   T,
+                   c,
+                   nu,
+                   o_Q,
+                   o_RHS);
+
+}
+
 //evaluate ODE rhs = f(q,t)
 void bns_t::rhsf_pml(deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_pmlQ,
                      deviceMemory<dfloat>& o_RHS, deviceMemory<dfloat>& o_pmlRHS, const dfloat T){
@@ -90,18 +144,33 @@ void bns_t::rhsVolume(dlong N, deviceMemory<dlong>& o_ids,
 
   // compute volume contribution to bns RHS
   if (N)
-    volumeKernel(N,
-                 o_ids,
-                 mesh.o_vgeo,
-                 mesh.o_D,
-                 mesh.o_x,
-                 mesh.o_y,
-                 mesh.o_z,
-                 T,
-                 c,
-                 nu,
-                 o_Q,
-                 o_RHS);
+    // volumeKernel(N,
+    //              o_ids,
+    //              mesh.o_vgeo,
+    //              mesh.o_D,
+    //              mesh.o_x,
+    //              mesh.o_y,
+    //              mesh.o_z,
+    //              T,
+    //              c,
+    //              nu,
+    //              o_Q,
+    //              o_RHS);
+
+  aleVolumeKernel(N,
+                  o_ids,
+                  mesh.o_vgeo,
+                  mesh.o_D,
+                  mesh.o_x,
+                  mesh.o_y,
+                  mesh.o_z,
+                  o_meshVelx,
+                  o_meshVely,
+                  T,
+                  c,
+                  nu,
+                  o_Q,
+                  o_RHS);
 }
 
 void bns_t::rhsPmlVolume(dlong N, deviceMemory<dlong>& o_ids, deviceMemory<dlong>& o_pmlids,
@@ -204,21 +273,39 @@ void bns_t::rhsSurface(dlong N, deviceMemory<dlong>& o_ids,
 
   // compute volume contribution to bns RHS
   if (N)
-    surfaceKernel(N,
-                  o_ids,
-                  mesh.o_sgeo,
-                  mesh.o_LIFT,
-                  mesh.o_vmapM,
-                  mesh.o_vmapP,
-                  mesh.o_EToB,
-                  mesh.o_x,
-                  mesh.o_y,
-                  mesh.o_z,
-                  T,
-                  c,
-                  nu,
-                  o_Q,
-                  o_RHS);
+    // surfaceKernel(N,
+    //               o_ids,
+    //               mesh.o_sgeo,
+    //               mesh.o_LIFT,
+    //               mesh.o_vmapM,
+    //               mesh.o_vmapP,
+    //               mesh.o_EToB,
+    //               mesh.o_x,
+    //               mesh.o_y,
+    //               mesh.o_z,
+    //               T,
+    //               c,
+    //               nu,
+    //               o_Q,
+    //               o_RHS);
+
+    aleSurfaceKernel(N,
+                     o_ids,
+                     mesh.o_sgeo,
+                     mesh.o_LIFT,
+                     mesh.o_vmapM,
+                     mesh.o_vmapP,
+                     mesh.o_EToB,
+                     mesh.o_x,
+                     mesh.o_y,
+                     mesh.o_z,
+                     o_meshVelx,
+                     o_meshVely,
+                     T,
+                     c,
+                     nu,
+                     o_Q,
+                     o_RHS);
 }
 
 void bns_t::rhsPmlSurface(dlong N, deviceMemory<dlong>& o_ids, deviceMemory<dlong>& o_pmlids,

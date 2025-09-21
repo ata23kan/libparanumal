@@ -84,3 +84,21 @@ SOFTWARE.
     }
   }
 }
+
+
+@kernel void bnsInitialPosition2D(const dlong Nelements,
+                                  @restrict const  dfloat * N1x,
+                                  @restrict const  dfloat * N1y,
+                                  @restrict const  dfloat * N1z,
+                                  @restrict        dfloat * VX){
+  
+  for(dlong e=0;e<Nelements;++e;@outer(0)){
+    for(int n=0;n<p_NpN1;++n;@inner(0)){
+      const dlong id = e*p_NpN1 + n;
+      const dlong iid = n + e*p_NpN1*p_NfieldsN1;
+      VX[iid+0*p_NpN1] = N1x[id];
+      VX[iid+1*p_NpN1] = N1y[id];
+    }
+
+  }
+}

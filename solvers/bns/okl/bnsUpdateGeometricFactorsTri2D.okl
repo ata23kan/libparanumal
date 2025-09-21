@@ -1,0 +1,160 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017-2022 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+#define p_blockSize 256
+@kernel void updateVgeoTri2D(const dlong Nelements,
+														@restrict const dlong  * elementIds,
+														@restrict const dfloat * VX,
+														@restrict 			dfloat * N1wJ,
+														@restrict 			dfloat * N1vgeo,
+														@restrict 			dfloat * N1ggeo,
+														@restrict 			dfloat * wJ,
+														@restrict 			dfloat * vgeo,
+														@restrict 			dfloat * ggeo){
+	
+	for(dlong eo=0;eo<Nelements;++eo;@tile(p_blockSize,@outer,@inner)){
+
+		const dlong e = elementIds[eo];
+		const dlong id = e*p_NpN1*p_NfieldsN1;
+
+		const dfloat xe1 = VX[id+0];
+		const dfloat xe2 = VX[id+1];
+		const dfloat xe3 = VX[id+2];
+
+		const dfloat ye1 = VX[id+3];
+		const dfloat ye2 = VX[id+4];
+		const dfloat ye3 = VX[id+5];
+
+		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
+		const dfloat rx =  (0.5/J)*(ye3-ye1);
+		const dfloat ry = -(0.5/J)*(xe3-xe1);
+		const dfloat sx = -(0.5/J)*(ye2-ye1);
+		const dfloat sy =  (0.5/J)*(xe2-xe1);
+
+		const dlong vgeoid = e*p_Nvgeo;
+
+		/* Update geometric Factors*/
+		vgeo[vgeoid + p_RXID] = rx;
+		vgeo[vgeoid + p_RYID] = ry;
+		vgeo[vgeoid + p_SXID] = sx;
+		vgeo[vgeoid + p_SYID] = sy;
+		vgeo[vgeoid + p_JID]  = J;
+		wJ[e] = J;
+
+		N1vgeo[vgeoid + p_RXID] = rx;
+		N1vgeo[vgeoid + p_RYID] = ry;
+		N1vgeo[vgeoid + p_SXID] = sx;
+		N1vgeo[vgeoid + p_SYID] = sy;
+		N1vgeo[vgeoid + p_JID]  = J;
+		N1wJ[e] = J;
+
+
+		const dlong ggeoid = e*p_Nggeo;
+
+		ggeo[ggeoid + p_G00ID] = J*(rx*rx + ry*ry);
+		ggeo[ggeoid + p_G01ID] = J*(rx*sx + ry*sy);
+		ggeo[ggeoid + p_G11ID] = J*(sx*sx + sy*sy);
+
+		N1ggeo[ggeoid + p_G00ID] = J*(rx*rx + ry*ry);
+		N1ggeo[ggeoid + p_G01ID] = J*(rx*sx + ry*sy);
+		N1ggeo[ggeoid + p_G11ID] = J*(sx*sx + sy*sy);
+
+	}
+} // End ggeo kernel
+
+@kernel void updateSgeoTri2D(const dlong Nelements,
+														@restrict const dlong  * elementIds, 
+														@restrict const dfloat * VX, 
+														@restrict 			dfloat * N1sgeo,
+														@restrict 			dfloat * sgeo){
+
+	for(dlong eo=0;eo<Nelements;++eo;@tile(p_blockSize,@outer,@inner)){
+		const dlong e = elementIds[eo];
+
+		const dlong id = e*p_NpN1*p_NfieldsN1;
+
+		const dfloat xe1 = VX[id+0];
+		const dfloat xe2 = VX[id+1];
+		const dfloat xe3 = VX[id+2];
+
+		const dfloat ye1 = VX[id+3];
+		const dfloat ye2 = VX[id+4];
+		const dfloat ye3 = VX[id+5];
+
+
+		const dfloat J  = 0.25*((xe2-xe1)*(ye3-ye1) - (xe3-xe1)*(ye2-ye1));
+
+		// face 1
+		dlong base = p_Nsgeo*p_Nfaces*e;
+		const dfloat nx1 = ye2-ye1;
+		const dfloat ny1 = -(xe2-xe1);
+		const dfloat  d1 = sqrt(nx1*nx1 + ny1*ny1);
+
+		sgeo[base+p_NXID] = nx1/d1;
+		sgeo[base+p_NYID] = ny1/d1;
+		sgeo[base+p_SJID] = d1/2.;
+		sgeo[base+p_IJID] = 1./J;
+
+		N1sgeo[base+p_NXID] = nx1/d1;
+		N1sgeo[base+p_NYID] = ny1/d1;
+		N1sgeo[base+p_SJID] = d1/2.;
+		N1sgeo[base+p_IJID] = 1./J;
+
+		// face 2
+		base += p_Nsgeo;
+		const dfloat nx2 = ye3-ye2;
+		const dfloat ny2 = -(xe3-xe2);
+		const dfloat  d2 = sqrt(nx2*nx2 + ny2*ny2);
+
+		sgeo[base+p_NXID] = nx2/d2;
+		sgeo[base+p_NYID] = ny2/d2;
+		sgeo[base+p_SJID] = d2/2.;
+		sgeo[base+p_IJID] = 1./J;
+
+		N1sgeo[base+p_NXID] = nx2/d2;
+		N1sgeo[base+p_NYID] = ny2/d2;
+		N1sgeo[base+p_SJID] = d2/2.;
+		N1sgeo[base+p_IJID] = 1./J;
+
+		// face 3
+		base += p_Nsgeo;
+		const dfloat nx3 = ye1-ye3;
+		const dfloat ny3 = -(xe1-xe3);
+		const dfloat  d3 = sqrt(nx3*nx3 + ny3*ny3);
+
+		sgeo[base+p_NXID] = nx3/d3;
+		sgeo[base+p_NYID] = ny3/d3;
+		sgeo[base+p_SJID] = d3/2.;
+		sgeo[base+p_IJID] = 1./J;
+
+		N1sgeo[base+p_NXID] = nx2/d2;
+		N1sgeo[base+p_NYID] = ny2/d2;
+		N1sgeo[base+p_SJID] = d2/2.;
+		N1sgeo[base+p_IJID] = 1./J;
+
+	}
+}		// end updateSgeo Kernel

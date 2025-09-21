@@ -26,6 +26,7 @@ SOFTWARE.
 
 #define p_isq12 (1.f/sqrt(12.f))
 #define p_isq6 (1.f/sqrt(6.f))
+#define p_sq2 (sqrt(2.f))
 
 
 void upwind(const dfloat nx, const dfloat ny, const dfloat c,
@@ -389,6 +390,51 @@ void upwind_split(const dfloat nx, const dfloat ny, const dfloat c,
   qyflux[5] = c*ny*sqrt(2.0)*dq3;
 }
 
+void LLF_split(const dfloat nx, const dfloat ny, const dfloat c,
+               const dfloat q1M, const dfloat q2M, const dfloat q3M,
+               const dfloat q4M, const dfloat q5M, const dfloat q6M,
+               const dfloat q1B, const dfloat q2B, const dfloat q3B,
+               const dfloat q4B, const dfloat q5B, const dfloat q6B,
+               dfloat * qxflux, dfloat * qyflux){
+
+  // const dfloat uM = c*q2M/q1M;
+  // const dfloat vM = c*q3M/q1M;
+  // const dfloat uP = c*q2B/q1B;
+  // const dfloat vP = c*q3B/q1B;
+
+  // const dfloat unM   = fabs(nx*uM);
+  // const dfloat unP   = fabs(nx*uP);
+  // const dfloat vnM   = fabs(ny*vM);
+  // const dfloat vnP   = fabs(ny*vP);
+  // const dfloat alphax = (unM > unP) ? unM : unP;
+  // const dfloat alphay = (vnM > vnP) ? vnM : vnP;
+
+  const dfloat alphax = c;
+  const dfloat alphay = c;
+
+
+  // const dfloat dq1 = 0.5f*(alpha*(q1M-q1B) + c*(nx*(q2B-q2M) + ny*(q3B-q3M)));
+  // const dfloat dq2 = 0.5f*(alpha*(q2M-q2B) + c*(nx*(q1B-q1M) + ny*(q4B-q4M) + p_sq2*nx*(q5B-q5M)));
+  // const dfloat dq3 = 0.5f*(alpha*(q3M-q3B) + c*(nx*(q4B-q4M) + ny*(q1B-q1M) + p_sq2*ny*(q6B-q6M)));
+  // const dfloat dq4 = 0.5f*(alpha*(q4M-q4B) + c*(nx*(q3B-q3M) + ny*(q2B-q2M)));
+  // const dfloat dq5 = 0.5f*(alpha*(q5M-q5B) + c*(p_sq2*nx*(q2B-q2M)));
+  // const dfloat dq6 = 0.5f*(alpha*(q6M-q6B) + c*(p_sq2*ny*(q3B-q3M)));
+
+  qxflux[0] = 0.5f*(alphax*(q1M-q1B) + c*(nx*(q2B-q2M)));
+  qxflux[1] = 0.5f*(alphax*(q2M-q2B) + c*(nx*(q1B-q1M)+ p_sq2*nx*(q5B-q5M)));
+  qxflux[2] = 0.5f*(alphax*(q3M-q3B) + c*(nx*(q4B-q4M)));
+  qxflux[3] = 0.5f*(alphax*(q4M-q4B) + c*(nx*(q3B-q3M)));
+  qxflux[4] = 0.5f*(alphax*(q5M-q5B) + c*(p_sq2*nx*(q2B-q2M)));
+  qxflux[5] = 0.5f*(alphax*(q6M-q6B));
+  qyflux[0] = 0.5f*(alphay*(q1M-q1B) + c*(ny*(q3B-q3M)));
+  qyflux[1] = 0.5f*(alphay*(q2M-q2B) + c*(ny*(q4B-q4M)));
+  qyflux[2] = 0.5f*(alphay*(q3M-q3B) + c*(ny*(q1B-q1M) + p_sq2*ny*(q6B-q6M)));
+  qyflux[3] = 0.5f*(alphay*(q4M-q4B) + c*(ny*(q2B-q2M)));
+  qyflux[4] = 0.5f*(alphay*(q5M-q5B));
+  qyflux[5] = 0.5f*(alphay*(q6M-q6B) + c*(p_sq2*ny*(q3B-q3M)));
+  
+}
+
 // This @kernel uses upwind flux
 @kernel void bnsPmlSurfaceTri2D(const dlong pmlNelements,
                                @restrict const  dlong  *  pmlElementIds,
@@ -478,6 +524,7 @@ void upwind_split(const dfloat nx, const dfloat ny, const dfloat c,
                                       &rP, &uP, &vP, &s11P, &s12P, &s22P);
 
               //convert back
+              q1P = rP;
               q2P = rP*uP/c;
               q3P = rP*vP/c;
               q4P = (-s12P/(c*c) + q2P*q3P/q1P);
@@ -487,7 +534,11 @@ void upwind_split(const dfloat nx, const dfloat ny, const dfloat c,
 
             // compute (q^*)
             dfloat fluxqx[p_Nfields], fluxqy[p_Nfields];
-            upwind_split(nx, ny, c,
+            // upwind_split(nx, ny, c,
+            //        q1M, q2M, q3M, q4M, q5M, q6M,
+            //        q1P, q2P, q3P, q4P, q5P, q6P,
+            //        fluxqx, fluxqy);
+            LLF_split(nx, ny, c,
                    q1M, q2M, q3M, q4M, q5M, q6M,
                    q1P, q2P, q3P, q4P, q5P, q6P,
                    fluxqx, fluxqy);

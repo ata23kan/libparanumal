@@ -54,9 +54,8 @@ public:
   }
 
   //Full meshsolve
-  virtual void MeshSolve(deviceMemory<dfloat>& o_VX, deviceMemory<dfloat>& o_rhsX, const dfloat time) {
-  // virtual void MeshSolve(const dfloat time, const dfloat aleTime) {
-    LIBP_FORCE_ABORT("MeshSolve not implemented in this solver");
+  virtual void MoveMesh(deviceMemory<dfloat>& o_VX, deviceMemory<dfloat>& o_rhsX, const dfloat time) {
+    LIBP_FORCE_ABORT("MoveMesh not implemented in this solver");
   }
 
   // Update geometric factors

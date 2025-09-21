@@ -1,0 +1,244 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017-2022 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+// @kernel void interpolateVelocityTri2D(const dlong Nelements,
+// 																			@restrict const dfloat *  IM,
+// 																			@restrict       dfloat *  rhsX,
+// 																			@restrict       dfloat *  x,
+// 																			@restrict       dfloat *  y,
+// 																			@restrict       dfloat *  z,
+// 																			@restrict       dfloat *  meshVelx,
+// 																			@restrict       dfloat *  meshVely){
+
+// 	for(int e=0;e<Nelements;e++;@outer(0)){
+
+// 		@shared dfloat s_vx[p_NpN1];
+// 		@shared dfloat s_vy[p_NpN1];
+
+// 		for(int n=0;n<p_Np;++n;@inner(0)){
+// 			if(n<p_NpN1){
+// 				const dlong id = n + e*p_NpN1*p_NfieldsN1;
+// 				s_vx[n] = rhsX[id+0*p_NpN1];
+// 				s_vy[n] = rhsX[id+1*p_NpN1];
+// 			}
+// 		}
+
+// 		for(int n=0;n<p_Np;++n;@inner(0)){
+
+// 			dfloat mQ_x = 0.;
+// 			dfloat mQ_y = 0.;
+
+// 			#pragma unroll p_NpN1
+// 				for(int i=0;i<p_NpN1;i++){
+// 					mQ_x += IM[i+n*p_NpN1]*s_vx[i];
+// 					mQ_y += IM[i+n*p_NpN1]*s_vy[i];
+// 				}
+
+// 			const dlong id = e*p_Np + n;
+// 			meshVelx[id] = mQ_x;
+// 			meshVely[id] = mQ_y;
+// 		}
+
+// 	}  // end element loop
+// }		 // end velocity interpolation kernel
+
+@kernel void interpolateVelocityTri2D(const dlong Nelements,
+																			@restrict const dlong  *  elementIds,
+																			@restrict const dfloat *  IM,
+																			@restrict       dfloat *  rhsX,
+																			@restrict       dfloat *  x,
+																			@restrict       dfloat *  y,
+																			@restrict       dfloat *  z,
+																			@restrict       dfloat *  meshVelx,
+																			@restrict       dfloat *  meshVely){
+
+	for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+
+		@shared dfloat s_vx[p_NblockV][p_NpN1];
+		@shared dfloat s_vy[p_NblockV][p_NpN1];
+
+		for(int es=0;es<p_NblockV;++es;@inner(1)){ // Elements in the block
+			for(int n=0;n<p_Np;++n;@inner(0)){
+				const dlong et = eo+es;
+				if(n<p_NpN1){
+					if(et<Nelements){
+						const dlong e = elementIds[et];
+						const dlong id = n + e*p_NpN1*p_NfieldsN1;
+						s_vx[es][n] = rhsX[id+0*p_NpN1];
+						s_vy[es][n] = rhsX[id+1*p_NpN1];
+					}
+				}
+			}
+		}
+		// Wait for all node data is loaded into @shared
+
+		for(int es=0;es<p_NblockV;++es;@inner(1)){ // Elements in the block
+			for(int n=0;n<p_Np;++n;@inner(0)){
+				const dlong et = eo+es;
+				if(et<Nelements){
+					const dlong e=elementIds[et];
+
+					dfloat mQ_x = 0.;
+					dfloat mQ_y = 0.;
+
+					#pragma unroll p_NpN1
+						for(int i=0;i<p_NpN1;i++){
+							mQ_x += IM[i+n*p_NpN1]*s_vx[es][i];
+							mQ_y += IM[i+n*p_NpN1]*s_vy[es][i];
+						}
+
+					const dlong id = e*p_Np + n;
+					meshVelx[id] = mQ_x;
+					meshVely[id] = mQ_y;
+				}
+			}
+		}
+	}
+}		 // end velocity interpolation kernel
+
+
+@kernel void interpolatePositionTri2D(const dlong Nelements,
+																			@restrict const dlong  *  elementIds,
+																			@restrict const dfloat *  IM,
+																			@restrict       dfloat *  VX,
+																			@restrict       dfloat *  N1x,
+																			@restrict       dfloat *  N1y,
+																			@restrict       dfloat *  N1z,
+																			@restrict       dfloat *  x,
+																			@restrict       dfloat *  y,
+																			@restrict       dfloat *  z){
+
+	for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+
+		@shared dfloat s_x[p_NblockV][p_NpN1];
+		@shared dfloat s_y[p_NblockV][p_NpN1];
+
+    for(int es=0;es<p_NblockV;++es;@inner(1)){ // Elements in the block
+    	for(int n=0;n<p_Np;++n;@inner(0)){			 // Nodes in the element
+    		const dlong et = eo+es;
+    		if(n<p_NpN1){
+    			if(et<Nelements){
+    				const dlong e = elementIds[et];
+    				const dlong id = n + e*p_NpN1*p_NfieldsN1;
+    				s_x[es][n] = VX[id+0*p_NpN1];
+    				s_y[es][n] = VX[id+1*p_NpN1];
+
+    				// Update low order mesh vertex positions
+    				N1x[id] = VX[id+0*p_NpN1];
+    				N1y[id] = VX[id+1*p_NpN1];
+    			}
+    		}
+    	}
+    }
+
+    // Wait for all node data is loaded into @shared
+
+    for(int es=0;es<p_NblockV;++es;@inner(1)){ // Elements in the block
+    	for(int n=0;n<p_Np;++n;@inner(0)){			 // Nodes in the element
+    		const dlong et = eo+es;
+    		if(et<Nelements){
+    			const dlong e = elementIds[et];
+
+    			dfloat mQ_x = 0.;
+    			dfloat mQ_y = 0.;
+
+    			#pragma unroll p_NpN1
+    				for(int i=0;i<p_NpN1;i++){
+    					mQ_x += IM[i+n*p_NpN1]*s_x[es][i];
+    					mQ_y += IM[i+n*p_NpN1]*s_y[es][i];
+    				}
+					const dlong id = e*p_Np + n;
+					x[id] = mQ_x;
+					y[id] = mQ_y;
+    		}
+    	}
+    }
+	}
+}
+
+
+		// for(int n=0;n<p_Np;++n;@inner(0)){
+
+		// 	dfloat mQ_x = 0.;
+		// 	dfloat mQ_y = 0.;
+
+		// 	#pragma unroll p_NpN1
+		// 		for(int i=0;i<p_NpN1;i++){
+		// 			mQ_x += IM[i+n*p_NpN1]*s_x[i];
+		// 			mQ_y += IM[i+n*p_NpN1]*s_y[i];
+		// 		}
+
+		// 	const dlong id = e*p_Np + n;
+		// 	x[id] = mQ_x;
+		// 	y[id] = mQ_y;
+
+		// }
+
+
+// @kernel void interpolatePositionTri2D(const dlong Nelements,
+// 																			@restrict const dfloat *  IM,
+// 																			@restrict       dfloat *  VX,
+// 																			@restrict       dfloat *  N1x,
+// 																			@restrict       dfloat *  N1y,
+// 																			@restrict       dfloat *  N1z,
+// 																			@restrict       dfloat *  x,
+// 																			@restrict       dfloat *  y,
+// 																			@restrict       dfloat *  z){
+
+// 	for(int e=0;e<Nelements;e++;@outer(0)){
+
+// 		@shared dfloat s_x[p_NpN1];
+// 		@shared dfloat s_y[p_NpN1];
+
+// 		for(int n=0;n<p_Np;++n;@inner(0)){
+// 			if(n<p_NpN1){
+// 				const dlong id = n + e*p_NpN1*p_NfieldsN1;
+// 				s_x[n] = VX[id+0*p_NpN1];
+// 				s_y[n] = VX[id+1*p_NpN1];
+
+// 				N1x[id] = VX[id+0*p_NpN1];
+// 				N1y[id] = VX[id+1*p_NpN1];
+// 			}
+// 		}
+
+// 		for(int n=0;n<p_Np;++n;@inner(0)){
+
+// 			dfloat mQ_x = 0.;
+// 			dfloat mQ_y = 0.;
+
+// 			#pragma unroll p_NpN1
+// 				for(int i=0;i<p_NpN1;i++){
+// 					mQ_x += IM[i+n*p_NpN1]*s_x[i];
+// 					mQ_y += IM[i+n*p_NpN1]*s_y[i];
+// 				}
+
+// 			const dlong id = e*p_Np + n;
+// 			x[id] = mQ_x;
+// 			y[id] = mQ_y;
+
+// 		}
+// 	}
+// }

@@ -1,0 +1,66 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017-2022 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+// Deformation in V.-T. Nguyen, “An arbitrary Lagrangian–Eulerian discontinuous Galerkin
+// method for simulations of flows over variable geometries,” 
+// Journal of Fluids and Structures, vol. 26, no. 2, pp. 312–329, Feb. 2010
+
+@kernel void explicitDeformationTri2D(const dlong Nelements,
+																			@restrict const dlong  * elementIds,
+																		  					const dfloat   t,
+																		  					const dfloat   Ax,
+																		  					const dfloat   Ay,
+																		  					const dfloat   kx,
+																		  					const dfloat   ky,
+																		  					const dfloat   omega,
+																		  @restrict const dfloat * VX0,
+																		  @restrict       dfloat * rhsX,
+																		  @restrict       dfloat * VX){
+
+	for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+
+		for(int es=0;es<p_NblockV;++es;@inner(1)){ // For all elements in the block
+			 for(int n=0;n<p_Np;++n;@inner(0)){ // For all nodes in this element
+			 	const dlong et = eo+es; // element in block
+			 	if(et<Nelements){
+			 		const dlong e = elementIds[et];
+					const dlong id = n + e*p_Np*p_Nfields;
+					const dfloat x_0 = VX0[id+0*p_Np];
+					const dfloat y_0 = VX0[id+1*p_Np];
+					const dfloat Sx = sin(kx*x_0);
+					const dfloat Sy = sin(ky*y_0);
+					const dfloat S  = sin(omega*t);
+
+					// VX[id+0*p_Np] = x_0 + Ax*S*Sx*Sy; 
+					// VX[id+1*p_Np] = y_0 + Ay*S*Sx*Sy; 
+
+					rhsX[id+0*p_Np] = Ax*omega*cos(omega*t)*Sx*Sy;
+					rhsX[id+1*p_Np] = Ay*omega*cos(omega*t)*Sx*Sy;
+			 	}
+			 }
+		}
+	}
+}

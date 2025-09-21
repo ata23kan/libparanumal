@@ -41,6 +41,16 @@ void bns_t::Run(){
                          mesh.o_z,
                          o_q);
 
+  initialPositionKernel(mesh.Nelements,
+                        meshN1.o_x,
+                        meshN1.o_y,
+                        meshN1.o_z,
+                        o_VX);
+
+  // Hold the initial positions for explicit deformation
+  int NAle = meshN1.Np*meshN1.Nelements*mdsNfields;
+  o_VX0.copyFrom(o_VX, NAle, 0, properties_t("async", true));
+
   if (mesh.NpmlElements)
     pmlInitialConditionKernel(mesh.NpmlElements,
                              c,
@@ -72,7 +82,8 @@ void bns_t::Run(){
 #endif
   timeStepper.SetTimeStep(dt);
 
-  timeStepper.RunWithPml(*this, o_q, o_pmlq, startTime, finalTime);
+  // timeStepper.RunWithAle(*this, o_q, o_VX, startTime, finalTime);
+  timeStepper.RunWithAlePml(*this, o_q, o_VX, o_pmlq, startTime, finalTime);
 
   // output norm of final solution
   {

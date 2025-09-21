@@ -182,6 +182,7 @@ void lserk4::Step(solver_t& solver,
 void lserk4::RunWithAle(solver_t& solver,
                  deviceMemory<dfloat> o_q,
                  deviceMemory<dfloat> o_VX,
+                 std::optional<deviceMemory<dfloat>> o_pmlq,
                  dfloat start, dfloat end) {
 
   /*Pre-reserve memory pool space to avoid some unnecessary re-sizing*/
@@ -205,17 +206,18 @@ void lserk4::RunWithAle(solver_t& solver,
       //save current state
       deviceMemory<dfloat> o_saveq  = platform.reserve<dfloat>(N);
       deviceMemory<dfloat> o_saveVX = platform.reserve<dfloat>(NAle);
+      deviceMemory<dfloat> o_savepmlq = platform.reserve<dfloat>(Npml);
+
       o_saveq.copyFrom(o_q, N, 0, properties_t("async", true));
       o_saveVX.copyFrom(o_VX, NAle, 0, properties_t("async", true));
+      if(o_pmlq.has_value()){
+        o_savepmlq.copyFrom(o_pmlq.value(), Npml, 0, properties_t("async", true));
+      }
 
       stepdt = outputTime-time;
 
-      // TODO: The Step function below will move the mesh
-      //       The mesh state should be saved as o_saveq
-
       //take small time step
-      // Step(solver, o_q, o_pmlq, o_VX, time, stepdt);
-      ALEStep(solver, o_q, o_VX, time, stepdt);
+      ALEStep(solver, o_q, o_VX, o_pmlq, time, stepdt);
 
       //report state
       solver.Report(outputTime,tstep);
@@ -223,6 +225,10 @@ void lserk4::RunWithAle(solver_t& solver,
       //restore previous state
       o_q.copyFrom(o_saveq, N, 0, properties_t("async", true));
       o_VX.copyFrom(o_saveVX, NAle, 0, properties_t("async", true));
+
+      if(o_pmlq.has_value()){
+        o_pmlq.value().copyFrom(o_savepmlq, Npml, 0, properties_t("async", true));
+      }
 
       outputTime += outputInterval;
     }
@@ -234,8 +240,7 @@ void lserk4::RunWithAle(solver_t& solver,
       stepdt = dt;
     }
 
-    // Step(solver, o_q, o_pmlq, time, stepdt);
-    ALEStep(solver, o_q, o_VX, time, stepdt);
+    ALEStep(solver, o_q, o_VX, o_pmlq, time, stepdt);
     time += stepdt;
     tstep++;
   }
@@ -244,6 +249,7 @@ void lserk4::RunWithAle(solver_t& solver,
 void lserk4::ALEStep(solver_t& solver,
                      deviceMemory<dfloat> o_q,
                      deviceMemory<dfloat> o_VX,
+                     std::optional<deviceMemory<dfloat>> o_pmlq,
                      dfloat time, dfloat _dt) {
 
   deviceMemory<dfloat> o_resq = platform.reserve<dfloat>(N);
@@ -251,6 +257,9 @@ void lserk4::ALEStep(solver_t& solver,
 
   deviceMemory<dfloat> o_resX = platform.reserve<dfloat>(NAle);
   deviceMemory<dfloat> o_rhsX = platform.reserve<dfloat>(NAle);
+
+  deviceMemory<dfloat> o_respmlq = platform.reserve<dfloat>(Npml);
+  deviceMemory<dfloat> o_rhspmlq = platform.reserve<dfloat>(Npml);
 
   // Procedure
   // 1. Find the mesh velocity at the vertices and interpolate to the
@@ -266,7 +275,7 @@ void lserk4::ALEStep(solver_t& solver,
     dfloat currentTime = time + rkc[rk]*_dt;
 
     // Find the mesh velocity at the vertices
-    solver.MeshSolve(o_VX, o_rhsX, currentTime);
+    solver.MoveMesh(o_VX, o_rhsX, currentTime);
 
     // // Update the positions using Runge-Kutta
     updateKernel(NAle, _dt, rka[rk], rkb[rk],
@@ -278,11 +287,20 @@ void lserk4::ALEStep(solver_t& solver,
     // Update interpolation nodes
     solver.UpdateX(o_VX);
 
-    solver.rhsf(o_q, o_rhsq, currentTime);
+    //evaluate ODE rhs = f(q,t)
+    if (o_pmlq.has_value()) {
+      solver.rhsf_pml(o_q, o_pmlq.value(), o_rhsq, o_rhspmlq, currentTime);
+    } else {
+      solver.rhsf(o_q, o_rhsq, currentTime);
+    }
 
     // update solution using Runge-Kutta
     updateKernel(N, _dt, rka[rk], rkb[rk],
                  o_rhsq, o_resq, o_q);
+    if (o_pmlq.has_value()) {
+      updateKernel(Npml, _dt, rka[rk], rkb[rk],
+                   o_rhspmlq, o_respmlq, o_pmlq.value());
+    }
   }
 }
 

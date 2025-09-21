@@ -163,6 +163,81 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   /*setup trace halo exchange */
   traceHalo = mesh.HaloTraceSetup(Nfields);
 
+
+  // Setup mesh deformation solver
+  // bc = 1 -> walls
+  // bc = 2 -> outflow
+  // bc = 3 -> wallm
+  int NBCTypes = 4;
+  memory<int> mdsBCType(NBCTypes);
+  mdsBCType[0] = 0;
+  mdsBCType[1] = 1;
+  mdsBCType[2] = 1;
+  mdsBCType[3] = 2;
+
+  // Build low order mesh for deformation
+  meshN1 = mesh.SetupNewDegree(1);
+  properties_t kernelInfoN1 = meshN1.props;
+
+  // Build interpolation matrix to high order mesh
+  mesh.DegreeRaiseMatrixTri2D(meshN1.N, mesh.N, IM);
+  o_IM = platform.malloc<dfloat>(IM);
+
+  mdsSettings = _settings.extractMdsSettings();
+
+  mdsLambda = 1.0; // TODO: Why are these not coming from the settings -AA
+  mdsMu = 0.35;    // TODO: Why are these not coming from the settings -AA
+
+  mdsSolver.Setup(platform, meshN1, mdsSettings,
+                  mdsLambda, mdsMu, NBCTypes, mdsBCType);
+
+  mdsNfields = mdsSolver.Nfields;
+  kernelInfoN1["defines/" "p_Nfields"] = mdsNfields;
+
+  dlong mdsNLocal = mdsSolver.Ndofs;
+  dlong mdsNhalo = mdsSolver.Nhalo;
+
+  if (mdsSettings.compareSetting("LINEAR SOLVER","NBPCG")){
+    mdsLinearSolver.Setup<LinearSolver::nbpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","NBFPCG")){
+    mdsLinearSolver.Setup<LinearSolver::nbfpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PCG")){
+    mdsLinearSolver.Setup<LinearSolver::pcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PGMRES")){
+    mdsLinearSolver.Setup<LinearSolver::pgmres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PMINRES")){
+    mdsLinearSolver.Setup<LinearSolver::pminres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  }
+
+  // solver tolerances
+
+  //Solver tolerances
+  if (sizeof(dfloat)==sizeof(double)) {
+    mdsTOL = 1.0E-3;
+  } else {
+    mdsTOL = 1.0E-3;
+  }
+
+  // Setup ALE velocity
+  dlong NlocalAle = mesh.NnonPmlElements*mesh.Np;
+  dlong NhaloAle = mesh.totalHaloPairs*mesh.Np;
+
+  // printf("Nelements: %d\n", mesh.Nelements);
+  // printf("Nelements N1: %d\n", meshN1.Nelements);
+  // printf("nnonpmlNelements: %d\n", mesh.NnonPmlElements);
+  // printf("nnonpmlNelements N1: %d\n", meshN1.NnonPmlElements);
+  // printf("npmlNelements: %d\n", mesh.NpmlElements);
+  // std::exit(EXIT_SUCCESS);
+
+  // mesh velocity at the interpolation nodes
+  meshVelx.calloc(NlocalAle+NhaloAle);
+  meshVely.calloc(NlocalAle+NhaloAle);
+  o_meshVelx = platform.malloc<dfloat>(meshVelx);
+  o_meshVely = platform.malloc<dfloat>(meshVely);
+
+  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
+  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
+
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
   o_q = platform.malloc<dfloat>(Nlocal+Nhalo);
@@ -180,6 +255,10 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   settings.getSetting("DATA FILE", dataFileName);
   kernelInfo["includes"] += dataFileName;
 
+  // ALE First order mesh properties
+  kernelInfo["defines/" "p_NpN1"] = meshN1.Np;
+  kernelInfo["defines/ p_NfieldsN1"] = mdsNfields;
+
   kernelInfo["defines/" "p_Nfields"]= Nfields;
   kernelInfo["defines/" "p_Npmlfields"]= Npmlfields;
 
@@ -191,6 +270,10 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   int NblockV = std::max(1, blockMax/mesh.Np);
   kernelInfo["defines/" "p_NblockV"]= NblockV;
+
+  int NblockVN1 = std::max(1, blockMax/meshN1.Np);
+  kernelInfoN1["defines/" "p_NblockV"]= NblockVN1;
+  kernelInfo["defines/" "p_NblockVN1"]= NblockVN1;
 
   int NblockS = std::max(1, blockMax/maxNodes);
   kernelInfo["defines/" "p_NblockS"]= NblockS;
@@ -273,6 +356,11 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
     pmlInitialConditionKernel = platform.buildKernel(fileName,
                                                   "bnsPmlInitialCondition2D",
                                                   kernelInfo);
+
+    // ALE Initial Position
+    kernelName = "bnsInitialPosition2D";
+    initialPositionKernel  = platform.buildKernel(fileName, kernelName, kernelInfo);
+
   } else {
     fileName   = oklFilePrefix + "bnsInitialCondition3D" + oklFileSuffix;
     initialConditionKernel = platform.buildKernel(fileName,
@@ -282,4 +370,42 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
                                                   "bnsPmlInitialCondition3D",
                                                   kernelInfo);
   }
+
+  // ALE Kernels
+  fileName  = oklFilePrefix + "bnsExplicitDeformation" + suffix + oklFileSuffix;
+  kernelName = "explicitDeformation" + suffix;
+  explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+
+  fileName = oklFilePrefix + "bnsInterpolateDeformation" + suffix + oklFileSuffix;
+  kernelName = "interpolateVelocity" + suffix;
+  velInterpolationKernel = platform.buildKernel(fileName, kernelName, kernelInfo); // kernelInfo of high order
+
+  kernelName = "interpolatePosition" + suffix;
+  posInterpolationKernel = platform.buildKernel(fileName, kernelName, kernelInfo); // kernelInfo of high order
+
+  fileName  = oklFilePrefix + "bnsUpdateGeometricFactors" + suffix + oklFileSuffix;
+  kernelName = "updateVgeo" + suffix;
+  updateVgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  kernelName = "updateSgeo" + suffix;
+  updateSgeoKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  fileName   = oklFilePrefix + "bnsAleSurface" + suffix + oklFileSuffix;
+  kernelName = "bnsAleSurface" + suffix;
+  aleSurfaceKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  fileName   = oklFilePrefix + "bnsAleVolume" + suffix + oklFileSuffix;
+  kernelName = "bnsAleVolume" + suffix;
+  aleVolumeKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
+
+  fileName   = oklFilePrefix + "bnsAleRhs" + suffix + oklFileSuffix;
+  if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+    kernelName = "aleRhsLinElastic" + suffix;
+    // aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+
+    kernelName = "aleRhsLaplace" + suffix;
+    // aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  }
+
 }

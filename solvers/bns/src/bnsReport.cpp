@@ -53,6 +53,10 @@ void bns_t::Report(dfloat time, int tstep){
     o_q.copyTo(q);
     o_Vort.copyTo(Vort);
 
+    // Copy the new mesh positions from ALE
+    mesh.o_x.copyTo(mesh.x);
+    mesh.o_y.copyTo(mesh.y);
+
     // output field files
     std::string name;
     settings.getSetting("OUTPUT FILE NAME", name);

@@ -33,6 +33,7 @@ SOFTWARE.
 #include "solver.hpp"
 #include "timeStepper.hpp"
 #include "linAlg.hpp"
+#include "mds.hpp"
 
 #define DBNS LIBP_DIR"/solvers/bns/"
 
@@ -45,6 +46,8 @@ public:
   void parseFromFile(platformSettings_t& platformSettings,
                      meshSettings_t& meshSettings,
                      const std::string filename);
+
+  mdsSettings_t extractMdsSettings();
 };
 
 class bns_t: public solver_t {
@@ -92,6 +95,32 @@ public:
 
   kernel_t initialConditionKernel;
   kernel_t pmlInitialConditionKernel;
+
+  // ALE
+  mesh_t meshN1;
+
+  memory<dfloat> meshVelx, meshVely;
+  deviceMemory<dfloat> o_meshVelx, o_meshVely;
+  deviceMemory<dfloat> o_VX, o_VX0;  // Vertex positions to be updated in ALE
+
+  // Mesh deformation for ALE
+  mdsSettings_t mdsSettings;
+  mds_t mdsSolver;
+  linearSolver_t<dfloat> mdsLinearSolver;
+  dfloat mdsTOL, mdsLambda, mdsMu;
+  int mdsNfields, Niter;
+  memory<dfloat> mapB;  // boundary flag of face nodes
+  deviceMemory<dfloat> o_mapB;
+
+  memory<dfloat> IM;          // interpolation to higher order
+  deviceMemory<dfloat> o_IM;
+
+  kernel_t aleVolumeKernel, aleSurfaceKernel;
+  kernel_t aleRhsKernel, aleBCKernel;
+  kernel_t updateVgeoKernel, updateSgeoKernel;
+  kernel_t velInterpolationKernel, posInterpolationKernel;
+  kernel_t initialPositionKernel;
+  kernel_t explicitDeformationKernel;
 
   bns_t() = default;
   bns_t(platform_t &_platform, mesh_t &_mesh,
@@ -143,6 +172,13 @@ public:
                        deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_pmlQ,
                        deviceMemory<dfloat>& o_RHS, deviceMemory<dfloat>& o_pmlRHS,
                        deviceMemory<dfloat>& o_fQM, const dfloat T);
+  void MoveMesh(deviceMemory<dfloat>& o_VX, deviceMemory<dfloat>& o_rhsX, const dfloat T);
+
+  void UpdateGeo(deviceMemory<dfloat>& o_VX);
+
+  void UpdateX(deviceMemory<dfloat>& o_VX);
+
+  void rhsf(deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_RHS, const dfloat T);
 };
 #endif
 

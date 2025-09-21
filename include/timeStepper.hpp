@@ -65,6 +65,12 @@ class timeStepper_t {
                   deviceMemory<dfloat>& o_VX,
                   dfloat start, dfloat end);
 
+  void RunWithAlePml(solver_t& solver,
+                    deviceMemory<dfloat>& o_q,
+                    deviceMemory<dfloat>& o_VX,
+                    deviceMemory<dfloat>& o_pmlq,
+                    dfloat start, dfloat end);
+
   void SetTimeStep(dfloat dt_);
 
   dfloat GetTimeStep();
@@ -110,6 +116,7 @@ public:
   virtual void RunWithAle(solver_t& solver,
                           deviceMemory<dfloat> o_q,
                           deviceMemory<dfloat> o_VX,
+                          std::optional<deviceMemory<dfloat>> o_pmlq,
                           dfloat start, dfloat end){
     LIBP_FORCE_ABORT("RunWithAle not supported in this solver!");
   }
@@ -172,6 +179,7 @@ protected:
   void ALEStep(solver_t& solver,
                deviceMemory<dfloat> o_q,
                deviceMemory<dfloat> o_VX,
+               std::optional<deviceMemory<dfloat>> o_pmlq,
                dfloat time, dfloat dt);
 
 public:
@@ -190,6 +198,7 @@ public:
   void RunWithAle(solver_t& solver,
                   deviceMemory<dfloat> o_q,
                   deviceMemory<dfloat> o_VX,
+                  std::optional<deviceMemory<dfloat>> o_pmlq,
                   dfloat start, dfloat end);
 };
 
