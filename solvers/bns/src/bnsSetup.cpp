@@ -163,7 +163,6 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   /*setup trace halo exchange */
   traceHalo = mesh.HaloTraceSetup(Nfields);
 
-
   // Setup mesh deformation solver
   // bc = 1 -> walls
   // bc = 2 -> outflow
@@ -208,8 +207,6 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   } else if (mdsSettings.compareSetting("LINEAR SOLVER","PMINRES")){
     mdsLinearSolver.Setup<LinearSolver::pminres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
   }
-
-  // solver tolerances
 
   //Solver tolerances
   if (sizeof(dfloat)==sizeof(double)) {
@@ -373,8 +370,18 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   // ALE Kernels
   fileName  = oklFilePrefix + "bnsExplicitDeformation" + suffix + oklFileSuffix;
-  kernelName = "explicitDeformation" + suffix;
-  explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  if(settings.compareSetting("ALE TEST", "BOX")){
+    testCase = 1;
+    kernelName = "explicitDeformationBox" + suffix;
+    explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  } else if(settings.compareSetting("ALE TEST", "PLUNGINGAIRFOIL")){
+    testCase = 2;
+    kernelName = "explicitDeformationAirfoil" + suffix;
+    explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);    
+  } else if(settings.compareSetting("ALE TEST", "SOLVEMESH")){
+    testCase = 3;
+  }
+
 
   fileName = oklFilePrefix + "bnsInterpolateDeformation" + suffix + oklFileSuffix;
   kernelName = "interpolateVelocity" + suffix;

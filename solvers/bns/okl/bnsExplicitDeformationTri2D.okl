@@ -28,17 +28,17 @@ SOFTWARE.
 // method for simulations of flows over variable geometries,” 
 // Journal of Fluids and Structures, vol. 26, no. 2, pp. 312–329, Feb. 2010
 
-@kernel void explicitDeformationTri2D(const dlong Nelements,
-																			@restrict const dlong  * elementIds,
-																		  					const dfloat   t,
-																		  					const dfloat   Ax,
-																		  					const dfloat   Ay,
-																		  					const dfloat   kx,
-																		  					const dfloat   ky,
-																		  					const dfloat   omega,
-																		  @restrict const dfloat * VX0,
-																		  @restrict       dfloat * rhsX,
-																		  @restrict       dfloat * VX){
+@kernel void explicitDeformationBoxTri2D(const dlong Nelements,
+																				 @restrict const dlong  * elementIds,
+																		  	 					 const dfloat   t,
+																		  	 					 const dfloat   Ax,
+																		  	 					 const dfloat   Ay,
+																		  	 					 const dfloat   kx,
+																		  	 					 const dfloat   ky,
+																		  	 					 const dfloat   omega,
+																		  	 @restrict const dfloat * VX0,
+																		  	 @restrict       dfloat * rhsX,
+																		  	 @restrict       dfloat * VX){
 
 	for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
 
@@ -59,6 +59,61 @@ SOFTWARE.
 
 					rhsX[id+0*p_Np] = Ax*omega*cos(omega*t)*Sx*Sy;
 					rhsX[id+1*p_Np] = Ay*omega*cos(omega*t)*Sx*Sy;
+			 	}
+			 }
+		}
+	}
+}
+
+
+@kernel void explicitDeformationAirfoilTri2D(const dlong Nelements,
+																				 			@restrict const dlong  * elementIds,
+																		  	 								const dfloat   t,
+																		  	 								const dfloat   xc,
+																		  	 								const dfloat   yc,
+																		  	 								const dfloat   ex,
+																		  	 								const dfloat   ey,
+																		  	 								const dfloat   h,
+																		  	 								const dfloat   dhdt,
+																		  	 								const dfloat   r1,
+																		  	 								const dfloat   r2,
+																		  	 								const dfloat   inv_dr,
+																		  	 			@restrict const dfloat * VX0,
+																		  	 			@restrict       dfloat * rhsX,
+																		  	 			@restrict       dfloat * VX){
+
+	for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+
+		for(int es=0;es<p_NblockV;++es;@inner(1)){ // For all elements in the block
+			 for(int n=0;n<p_Np;++n;@inner(0)){ // For all nodes in this element
+			 	const dlong et = eo+es; // element in block
+			 	if(et<Nelements){
+			 		const dlong e = elementIds[et];
+					const dlong id = n + e*p_Np*p_Nfields;
+					const dfloat x_0 = VX0[id+0*p_Np];
+					const dfloat y_0 = VX0[id+1*p_Np];
+
+
+					// Obtain the smooth decay
+					const dfloat r = sqrt((x_0-xc)*(x_0-xc) + (y_0-yc)*(y_0-yc));
+					dfloat beta;
+					if(r <= r1){
+						beta = 1.0;
+					} else if(r >= r2){
+						beta = 0.0;
+					} else{
+						dfloat s = (r - r1) * inv_dr;
+						dfloat s3=s*s*s;
+						dfloat s4=s3*s;
+						dfloat s5=s4*s;
+						beta = 1.0 - 10.0*s3 + 15.0*s4 - 6.0*s5;
+					}
+
+					VX[id+0*p_Np] = x_0 + h*beta*ex; 
+					VX[id+1*p_Np] = y_0 + h*beta*ey; 
+
+					rhsX[id+0*p_Np] = beta * dhdt * ex;
+					rhsX[id+1*p_Np] = beta * dhdt * ey;
 			 	}
 			 }
 		}

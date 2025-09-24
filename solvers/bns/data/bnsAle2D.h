@@ -26,19 +26,30 @@ SOFTWARE.
 
 //mean flow
 #define RBAR 1.0
-#define UBAR 1.0
+#define UBAR 0.1
 #define VBAR 0.0
 
 // Initial conditions
 #define bnsInitialConditions2D(c, nu, t, x, y, r, u, v, s11, s12, s22) \
 {                                         \
-  *(r) = 1 + exp(-3*(x*x+y*y));           \
-  *(u) = exp(-3*(x*x+y*y));               \
-  *(v) = exp(-3*(x*x+y*y));               \
+  *(r) = RBAR;                            \
+  *(u) = UBAR;                            \
+  *(v) = VBAR;                            \
   *(s11) = 0.0;                           \
   *(s12) = 0.0;                           \
   *(s22) = 0.0;                           \
 }
+
+// // Initial conditions
+// #define bnsInitialConditions2D(c, nu, t, x, y, r, u, v, s11, s12, s22) \
+// {                                         \
+//   *(r) = 1 + exp(-3*(x*x+y*y));           \
+//   *(u) = exp(-3*(x*x+y*y));               \
+//   *(v) = exp(-3*(x*x+y*y));               \
+//   *(s11) = 0.0;                           \
+//   *(s12) = 0.0;                           \
+//   *(s22) = 0.0;                           \
+// }
 
 // Body force
 #define bnsBodyForce2D(c, nu, t, x, y, r, u, v, fx, fy) \
@@ -83,4 +94,17 @@ SOFTWARE.
     *(s12B) = s12M;                    \
     *(s22B) = s22M;                    \
   }                                    \
+}
+
+// Mesh Deformation boundary
+/* wall 1, bounding box 10 */
+#define bnsMeshBoundary2D(bc, t, x, y, mx, my) \
+{ \
+  if(bc==10){                \
+    *(mx) = 0.0;             \
+    *(my) = 0.0;             \
+  } else if(bc==1){          \
+    *(mx)=0.0;               \
+    *(mu)=0.0;               \
+  }                          \
 }

@@ -92,6 +92,11 @@ bnsSettings_t::bnsSettings_t(comm_t& _comm):
   newSetting("OUTPUT FILE NAME",
              "bns");
 
+  newSetting("ALE TEST",
+             "BOX",
+             "ALE Test Case",
+             {"BOX", "PLUNGINGAIRFOIL"});
+
   mdsAddSettings(*this, "MDS ");
   parAlmond::AddSettings(*this, "MDS ");
   

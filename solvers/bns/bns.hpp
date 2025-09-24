@@ -98,6 +98,7 @@ public:
 
   // ALE
   mesh_t meshN1;
+  int testCase;
 
   memory<dfloat> meshVelx, meshVely;
   deviceMemory<dfloat> o_meshVelx, o_meshVely;
