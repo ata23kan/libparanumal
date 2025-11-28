@@ -351,6 +351,16 @@ protected:
             deviceMemory<dfloat> o_rkerr,
             dfloat time, dfloat _dt);
 
+  void ALEStep(solver_t& solver,
+            deviceMemory<dfloat> o_q,
+            deviceMemory<dfloat> o_VX,
+            std::optional<deviceMemory<dfloat>> o_pmlq,
+            deviceMemory<dfloat> o_rkq,
+            deviceMemory<dfloat> o_rkVX,
+            deviceMemory<dfloat> o_rkpmlq,
+            deviceMemory<dfloat> o_rkerr,
+            dfloat time, dfloat _dt);
+
   dfloat Estimater(deviceMemory<dfloat>& o_q,
                    deviceMemory<dfloat>& o_rkq,
                    deviceMemory<dfloat>& o_rkerr);
@@ -371,6 +381,12 @@ public:
            deviceMemory<dfloat> o_q,
            std::optional<deviceMemory<dfloat>> o_pmlq,
            dfloat start, dfloat end);
+
+  void RunWithAle(solver_t& solver,
+                  deviceMemory<dfloat> o_q,
+                  deviceMemory<dfloat> o_VX,
+                  std::optional<deviceMemory<dfloat>> o_pmlq,
+                  dfloat start, dfloat end);
 };
 
 /* Semi-Analytic Explict Runge-Kutta, order 5 with embedded order 4 and adaptive time-stepping */

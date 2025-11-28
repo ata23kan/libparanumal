@@ -341,6 +341,252 @@ void sark4::Step(solver_t& solver,
   }
 }
 
+void sark4::RunWithAle(solver_t& solver,
+                deviceMemory<dfloat> o_q,
+                deviceMemory<dfloat> o_VX,
+                std::optional<deviceMemory<dfloat>> o_pmlq,
+                dfloat start, dfloat end) {
+
+  dlong Ntotal = (Nelements+NhaloElements)*Np*Nfields;
+
+  /*Pre-reserve memory pool space to avoid some unnecessary re-sizing*/
+  platform.reserve<dfloat>(Ntotal + (Nrk+2)*N + (Nrk+2)*Npml
+                           + 7 * platform.memPoolAlignment<dfloat>());
+
+  deviceMemory<dfloat> o_rkq    = platform.reserve<dfloat>(Ntotal);
+  deviceMemory<dfloat> o_rkpmlq = platform.reserve<dfloat>(Npml);
+  deviceMemory<dfloat> o_rkerr  = platform.reserve<dfloat>(N);
+
+  deviceMemory<dfloat> o_rkVX = platform.reserve<dfloat>(NAle);
+
+  dfloat time = start;
+
+  solver.Report(time,0);
+
+  dfloat outputInterval=0.0;
+  solver.settings.getSetting("OUTPUT INTERVAL", outputInterval);
+
+  dfloat outputTime = time + outputInterval;
+
+  int tstep=0, allStep=0;
+
+  //Compute Butcher Tableau
+  UpdateCoefficients();
+
+  while (time < end) {
+
+    LIBP_ABORT("Time step became too small at time step = " << tstep,
+               dt<dtMIN);
+    LIBP_ABORT("Solution became unstable at time step = " << tstep,
+               std::isnan(dt));
+
+    //check for final timestep
+    if (time+dt > end){
+      dt = end-time;
+    }
+
+    ALEStep(solver, o_q, o_VX, o_pmlq,
+            o_rkq, o_rkVX, o_rkpmlq, o_rkerr,
+            time, dt);
+
+    // compute Dopri estimator
+    dfloat err = Estimater(o_q, o_rkq, o_rkerr);
+
+    // build controller
+    dfloat fac1 = pow(err,exp1);
+    dfloat fac = fac1/pow(facold,beta);
+
+    fac = std::max(invfactor2, std::min(invfactor1,fac/safe));
+    dfloat dtnew = dt/fac;
+
+    if (err<1.0) { //dt is accepted
+
+      // check for output during this step and do a mini-step
+      if (time<outputTime && time+dt>=outputTime) {
+        dfloat savedt = dt;
+
+        // save rkq
+        deviceMemory<dfloat> o_saveq = platform.reserve<dfloat>(N);
+        deviceMemory<dfloat> o_saveVX = platform.reserve<dfloat>(NAle);
+        deviceMemory<dfloat> o_savepmlq  = platform.reserve<dfloat>(Npml);
+        o_saveq.copyFrom(o_rkq, N, 0, properties_t("async", true));
+        o_saveVX.copyFrom(o_rkVX, NAle, 0, properties_t("async", true));
+        if (o_pmlq.has_value()) {
+          o_savepmlq.copyFrom(o_rkpmlq, Npml, 0, properties_t("async", true));
+        }
+
+        // change dt to match output
+        dt = outputTime-time;
+
+        //Compute Butcher Tableau
+        UpdateCoefficients();
+
+        // time step to output
+        ALEStep(solver, o_q, o_VX, o_pmlq,
+             o_rkq, o_rkVX, o_rkpmlq, o_rkerr,
+             time, dt);
+
+        // shift for output
+        o_rkq.copyTo(o_q, N, 0, properties_t("async", true));
+        o_rkVX.copyTo(o_VX, NAle, 0, properties_t("async", true));
+        if (o_pmlq.has_value()) {
+          o_rkpmlq.copyTo(o_pmlq.value(), Npml, 0, properties_t("async", true));
+        }
+
+        // output  (print from rkq)
+        solver.Report(outputTime,tstep);
+
+        // restore time step
+        dt = savedt;
+
+        // increment next output time
+        outputTime += outputInterval;
+
+        // accept saved rkq
+        o_saveq.copyTo(o_q, N, 0, properties_t("async", true));
+        o_saveVX.copyTo(o_VX, NAle, 0, properties_t("async", true));
+        if (o_pmlq.has_value()) {
+          o_savepmlq.copyTo(o_pmlq.value(), Npml, 0, properties_t("async", true));
+        }
+      } else {
+        // accept rkq
+        o_q.copyFrom(o_rkq, N, 0, properties_t("async", true));
+        o_VX.copyFrom(o_rkVX, NAle, 0, properties_t("async", true));
+        if (o_pmlq.has_value()) {
+          o_pmlq.value().copyFrom(o_rkpmlq, Npml, 0, properties_t("async", true));
+        }
+      }
+
+      time += dt;
+      while (time>outputTime) outputTime+= outputInterval; //catch up next output in case dt>outputInterval
+
+      constexpr dfloat errMax = 1.0e-4;  // hard coded factor ?
+      facold = std::max(err,errMax);
+
+      tstep++;
+    } else {
+      dtnew = dt/(std::max(invfactor1,fac1/safe));
+    }
+    dt = dtnew;
+
+    //Compute Butcher Tableau
+    UpdateCoefficients();
+
+    allStep++;
+  }
+}
+
+void sark4::ALEStep(solver_t& solver,
+                    deviceMemory<dfloat> o_q,
+                    deviceMemory<dfloat> o_VX,
+                    std::optional<deviceMemory<dfloat>> o_pmlq,
+                    deviceMemory<dfloat> o_rkq,
+                    deviceMemory<dfloat> o_rkVX,
+                    deviceMemory<dfloat> o_rkpmlq,
+                    deviceMemory<dfloat> o_rkerr,
+                    dfloat time, dfloat _dt) {
+
+  deviceMemory<dfloat> o_rhsq   = platform.reserve<dfloat>(N);
+  deviceMemory<dfloat> o_rkrhsq = platform.reserve<dfloat>(Nrk*N);
+
+  deviceMemory<dfloat> o_rhsX   = platform.reserve<dfloat>(NAle);
+  deviceMemory<dfloat> o_rkrhsX = platform.reserve<dfloat>(Nrk*NAle);
+
+  deviceMemory<dfloat> o_rhspmlq   = platform.reserve<dfloat>(Npml);
+  deviceMemory<dfloat> o_rkrhspmlq = platform.reserve<dfloat>(Nrk*Npml);
+
+  //RK step
+  for(int rk=0;rk<Nrk;++rk){
+
+    // t_rk = t + C_rk*_dt
+    dfloat currentTime = time + rkC[rk]*_dt;
+
+    // Compute the RK stage for mesh movement
+    rkPmlStageKernel(NAle,
+                     rk,
+                     _dt,
+                     o_pmlrkA,
+                     o_VX,
+                     o_rkrhsX,
+                     o_rkVX);
+
+
+
+    // solve the mesh velocities rhs = v_M
+    solver.MoveMesh(o_rkVX, o_rhsX, currentTime);
+
+    // Update the positions using SARK coefficients
+    rkPmlUpdateKernel(NAle,
+                      rk,
+                      _dt,
+                      o_pmlrkA,
+                      o_VX,
+                      o_rhsX,
+                      o_rkrhsX,
+                      o_rkVX);
+
+    // Update the geometric factors in the stage
+    solver.UpdateGeo(o_rkVX);
+
+    // Update the interpolation nodes
+    solver.UpdateX(o_rkVX);
+
+    //compute RK stage
+    // rkq = x_{rk}*q + _dt sum_{i=0}^{rk-1} a_{rk,i}*rhsq_i
+    rkStageKernel(Nelements,
+                  rk,
+                  _dt,
+                  o_rkX,
+                  o_rkA,
+                  o_q,
+                  o_rkrhsq,
+                  o_rkq);
+    if (o_pmlq.has_value()) {
+      rkPmlStageKernel(Npml,
+                      rk,
+                      _dt,
+                      o_pmlrkA,
+                      o_pmlq.value(),
+                      o_rkrhspmlq,
+                      o_rkpmlq);
+    }
+
+    //evaluate ODE rhs = f(q,t)
+    if (o_pmlq.has_value()) {
+      solver.rhsf_pml(o_rkq, o_rkpmlq, o_rhsq, o_rhspmlq, currentTime);
+    } else {
+      solver.rhsf(o_rkq, o_rhsq, currentTime);
+    }
+
+    // update solution using Runge-Kutta
+    // rkrhsq_rk = rhsq
+    // if rk==6
+    //   q = rkX_{rk}*q + _dt*sum_{i=0}^{rk} rkA_{rk,i}*rkrhs_i
+    //   rkerr = _dt*sum_{i=0}^{rk} rkE_{rk,i}*rkrhs_i
+    rkUpdateKernel(Nelements,
+                   rk,
+                   _dt,
+                   o_rkX,
+                   o_rkA,
+                   o_rkE,
+                   o_q,
+                   o_rhsq,
+                   o_rkrhsq,
+                   o_rkq,
+                   o_rkerr);
+    if (o_pmlq.has_value()) {
+      rkPmlUpdateKernel(Npml,
+                         rk,
+                         _dt,
+                         o_pmlrkA,
+                         o_pmlq.value(),
+                         o_rhspmlq,
+                         o_rkrhspmlq,
+                         o_rkpmlq);
+    }
+  }
+}
+
 dfloat sark4::Estimater(deviceMemory<dfloat>& o_q,
                         deviceMemory<dfloat>& o_rkq,
                         deviceMemory<dfloat>& o_rkerr){
