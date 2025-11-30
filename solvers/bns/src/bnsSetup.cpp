@@ -164,15 +164,18 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   traceHalo = mesh.HaloTraceSetup(Nfields);
 
   // Setup mesh deformation solver
-  // bc = 1 -> walls
-  // bc = 2 -> outflow
-  // bc = 3 -> wallm
-  int NBCTypes = 4;
+  // bc = 1 -> moving airfoil 
+  // bc = 2 -> stationary boundary
+  // wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, physical bounding box 6
+  int NBCTypes = 7;
   memory<int> mdsBCType(NBCTypes);
   mdsBCType[0] = 0;
   mdsBCType[1] = 1;
-  mdsBCType[2] = 1;
-  mdsBCType[3] = 2;
+  mdsBCType[2] = 2;
+  mdsBCType[3] = 3;
+  mdsBCType[4] = 2;
+  mdsBCType[5] = 2;
+  mdsBCType[6] = 6;
 
   // Build low order mesh for deformation
   meshN1 = mesh.SetupNewDegree(1);
@@ -251,6 +254,7 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   std::string dataFileName;
   settings.getSetting("DATA FILE", dataFileName);
   kernelInfo["includes"] += dataFileName;
+  kernelInfoN1["includes"] += dataFileName;
 
   // ALE First order mesh properties
   kernelInfo["defines/" "p_NpN1"] = meshN1.Np;
@@ -261,6 +265,9 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   int maxNodes = std::max(mesh.Np, (mesh.Nfp*mesh.Nfaces));
   kernelInfo["defines/" "p_maxNodes"]= maxNodes;
+
+  int Nmax = std::max(meshN1.Np, meshN1.Nfaces*meshN1.Nfp);
+  kernelInfoN1["defines/" "p_Nmax"]= Nmax;
 
   int blockMax = 256;
   if (platform.device.mode()=="CUDA") blockMax = 512;
@@ -408,11 +415,12 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   fileName   = oklFilePrefix + "bnsAleRhs" + suffix + oklFileSuffix;
   if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
     kernelName = "aleRhsLinElastic" + suffix;
-    // aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+    aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
   }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-
     kernelName = "aleRhsLaplace" + suffix;
-    // aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+    aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
   }
+  kernelName = "aleBC" + suffix;
+  aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
 
 }

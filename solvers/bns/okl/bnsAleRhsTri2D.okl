@@ -113,18 +113,18 @@ SOFTWARE.
 
         const int id = n*p_Nfields + e*p_Np*p_Nfields;
 
-        dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
-        dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
-        dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
-        dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
+        const dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
+        const dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
+        const dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
+        const dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
 
         // ddx((lambda+2mu)dudx + lambda*dvdy) + ddy(mu*dudy + mu*dvdx)
         rhs[id+0] -= J * ((lambda+2*mu)*ddx_dudx +mu*ddy_dudy + lambda*ddx_dvdy + mu*ddy_dvdx);
 
-        dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
-        dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
-        dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
-        dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
+        const dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
+        const dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
+        const dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
+        const dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
 
         // ddx(mu*dudy+mu*dvdx) + ddy((lambda+2mu)dvdy+lambda*dudx)
         rhs[id+1] -= J * (mu*ddx_dudy + mu * ddx_dvdx + (lambda+2*mu)*ddy_dvdy + lambda*ddy_dudx);

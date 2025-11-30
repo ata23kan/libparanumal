@@ -29,6 +29,11 @@ SOFTWARE.
 #define UBAR 0.1
 #define VBAR 0.0
 
+//Heaving Airfoil
+#define H 0.2
+#define FREQ 0.01
+#define PI 3.14159265
+
 // Initial conditions
 #define bnsInitialConditions2D(c, nu, t, x, y, r, u, v, s11, s12, s22) \
 {                                         \
@@ -97,14 +102,20 @@ SOFTWARE.
 }
 
 // Mesh Deformation boundary
-/* wall 1, bounding box 10 */
+/* moving wall 1, stationary 2 */
 #define bnsMeshBoundary2D(bc, t, x, y, mx, my) \
 { \
-  if(bc==10){                \
-    *(mx) = 0.0;             \
-    *(my) = 0.0;             \
-  } else if(bc==1){          \
-    *(mx)=0.0;               \
-    *(mu)=0.0;               \
-  }                          \
+  if(bc==1){                                 \
+    *(mx)=0.0;                               \
+    *(my)=H*2*PI*FREQ*cos(2*PI*FREQ*t);      \
+  } else if(bc==2){                          \
+    *(mx)=0.0;                               \
+    *(my)=0.0;                               \
+  } else if(bc==3){                          \
+    *(mx)=0.0;                               \
+    *(my)=0.0;                               \
+  } else if(bc==6){                          \
+    *(mx)=0.0;                               \
+    *(my)=0.0;                               \
+  }                                          \
 }

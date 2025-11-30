@@ -94,15 +94,15 @@ Curve Loop(10) = {19, -26, 18, -3};
 Plane Surface(11) = {10};
 
 
-MeshSize{1:131} = 0.005;   // airfoil points (small size)
-MeshSize{132, 133, 134, 135} = 0.25; // farfield corners (coarser)
-MeshSize{136:147} = 0.25; // PML corners (coarser)
+MeshSize{1:131} = 0.1;   // airfoil points (small size)
+MeshSize{132, 133, 134, 135} = 0.5; // farfield corners (coarser)
+MeshSize{136:147} = 0.5; // PML corners (coarser)
 
 // Physical groups
-Physical Curve("Wall", 1)       = {1, 2};
-Physical Curve("Outflow", 3)  	= {7,8,24,11,23,21,20,26,17,12,16,25};
-//Physical Curve("Outflow", 3) 	= {12, 16, 25};
-Physical Surface("Interior", 9) = {3};
-Physical Surface("XPML", 100)	  = {8, 9};
-Physical Surface("YPML", 200)	  = {10, 11};
-Physical Surface("XYPML", 300)  = {4, 5, 6, 7};
+Physical Line("Wall", 1)        = {1, 2};
+Physical Line("Outflow", 3)  	   = {7,8,24,11,23,21,20,26,17,12,16,25};
+Physical Line("BoundingBox", 6)  = {3, 4, 5, 6};
+Physical Surface("Interior", 9)  = {3};
+Physical Surface("XPML", 100)	   = {8, 9};
+Physical Surface("YPML", 200)	   = {10, 11};
+Physical Surface("XYPML", 300)   = {4, 5, 6, 7};
