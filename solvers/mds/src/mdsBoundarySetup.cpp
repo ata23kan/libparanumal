@@ -43,18 +43,47 @@ void mds_t::BoundarySetup(){
   }
   o_EToB = platform.malloc<int>(EToB);
 
+  // Adjust the bounding box of PML for the plunging airfoil test case.
+  dfloat x_min = -5.0, x_max = 10.0;
+  dfloat y_min = -5.0, y_max =  5.0;
+
+  dfloat pml_tol = 1e-5; 
+
   //translate the mesh's node-wise bc flag
   Nmasked = 0;
   mapB.malloc((mesh.Nelements+mesh.totalHaloPairs)*mesh.Np, 0);
+
   for (int n=0;n<mesh.Nelements*mesh.Np;n++) {
     int bc = mesh.mapB[n];
-    if (bc>0) {
-      int BC = BCType[bc];     //translate mesh's boundary flag
-      mapB[n] = BC;  //record it
+    int final_bc_type = 0;
 
-      if (mapB[n] > 0) Nmasked++;   //Dirichlet boundary
+    // Check standard external boundaries
+    if (bc>0) {
+      final_bc_type = BCType[bc];
+      // int BC = BCType[bc];     //translate mesh's boundary flag
+      // mapB[n] = BC;  //record it
+      // if (mapB[n] > 0) Nmasked++;   //Dirichlet boundary
       // if (mapB[n] == 1) Nmasked++;   //Dirichlet boundary
     }
+
+    // Check internal nodes if they belong to the PML interface
+    // Only implemented for 2D
+    if(final_bc_type==0){
+      dfloat xn = mesh.x[n];
+      dfloat yn = mesh.y[n];
+
+      // Check if node is on the Left or Right Interface
+      bool on_X_Interface = (fabs(xn - x_min) < pml_tol) || (fabs(xn - x_max) < pml_tol);
+       
+      // Check if node is on the Top or Bottom Interface
+      bool on_Y_Interface = (fabs(yn - y_min) < pml_tol) || (fabs(yn - y_max) < pml_tol);
+
+      if(on_X_Interface || on_Y_Interface){
+        final_bc_type = 6; // Bounding box translation
+      }
+    }
+    mapB[n] = final_bc_type; // Record it
+    if(mapB[n]>0) Nmasked++; // Count all nodes for Dirichlet condition
   }
   o_mapB = platform.malloc<int>(mapB);
 
