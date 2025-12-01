@@ -30,35 +30,36 @@ SOFTWARE.
                                     @restrict const  dfloat *  z,
                                     @restrict const  int    *  mapB,
                                     @restrict dfloat  *  Q,
-                                    @restrict dfloat  *  qu){
+                                    @restrict dfloat  *  qx,
+                                    @restrict dfloat  *  qy){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
       
-      const int id = n*p_Nfields+e*p_Np*p_Nfields;
-      const int iid = n+e*p_Np;
-      const int bc = mapB[n+e*p_Np];
+      // const int id = n*2+e*p_Np*p_Nfields;
+      const int id = n+e*p_Np;
+      const int bc = mapB[id];
 
-      dfloat uP=0, vP=0;
+      dfloat uP=0., vP=0.;
 
-      if(bc==1) {
-        mdsBoundaryConditions2D(bc, x[iid], y[iid],
+      if(bc>0) {
+        mdsBoundaryConditions2D(bc, x[id], y[id],
                                 uP, vP);
-        qu[id+0] = uP;
-        qu[id+1] = vP;
+        qx[id] = uP;
+        qy[id] = vP;
       }
     }
   }
 
-  // Second outer loop to write Q
-  for(int e=0;e<Nelements;e++;@outer(0)){
-    for(int n=0; n<p_Np;++n;@inner(0)){
+  // // Second outer loop to write Q
+  // for(int e=0;e<Nelements;e++;@outer(0)){
+  //   for(int n=0; n<p_Np;++n;@inner(0)){
 
-      const dlong id  = n + e*p_Np*p_Nfields;
-      const dlong iid = n*p_Nfields + e*p_Np*p_Nfields;
+  //     const dlong id  = n + e*p_Np*2;
+  //     const dlong iid = n + e*p_Np;
 
-      Q[id+0*p_Np] = qu[iid+0];
-      Q[id+1*p_Np] = qu[iid+1];
-    }
-  }
+  //     Q[id+0*p_Np] = qx[iid];
+  //     Q[id+1*p_Np] = qy[iid];
+  //   }
+  // }
 }

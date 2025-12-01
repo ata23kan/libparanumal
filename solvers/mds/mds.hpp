@@ -64,7 +64,7 @@ public:
   dfloat mu;
   dfloat tau;
 
-  int disc_ipdg, disc_c0;
+  int deform_laplace, deform_linElastic;
 
   ogs::halo_t traceHalo;
 

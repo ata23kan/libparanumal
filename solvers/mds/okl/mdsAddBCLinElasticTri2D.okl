@@ -30,7 +30,8 @@ SOFTWARE.
                                     @restrict const  dfloat *  z,
                                     @restrict const  int    *  mapB,
                                     @restrict dfloat  *  Q,
-                                    @restrict dfloat  *  qu){
+                                    @restrict dfloat  *  qx,
+                                    @restrict dfloat  *  qy){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
@@ -44,8 +45,8 @@ SOFTWARE.
       if(bc==1) {
         mdsBoundaryConditions2D(bc, x[iid], y[iid],
                                 uP, vP);
-        qu[id+0] = uP;
-        qu[id+1] = vP;
+        qx[id+0] = uP;
+        qx[id+1] = vP;
       }
     }
   }
@@ -57,8 +58,8 @@ SOFTWARE.
       const dlong id  = n + e*p_Np*p_Nfields;
       const dlong iid = n*p_Nfields + e*p_Np*p_Nfields;
 
-      Q[id+0*p_Np] = qu[iid+0];
-      Q[id+1*p_Np] = qu[iid+1];
+      Q[id+0*p_Np] = qx[iid+0];
+      Q[id+1*p_Np] = qx[iid+1];
     }
   }
 
