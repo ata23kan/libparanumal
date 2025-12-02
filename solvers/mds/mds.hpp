@@ -64,7 +64,7 @@ public:
   dfloat mu;
   dfloat tau;
 
-  int disc_ipdg, disc_c0;
+  int deform_laplace, deform_linElastic;
 
   ogs::halo_t traceHalo;
 
@@ -135,38 +135,8 @@ public:
   void Operator(deviceMemory<double>& o_q, deviceMemory<double>& o_Aq);
   void Operator(deviceMemory<float>& o_q, deviceMemory<float>& o_Aq);
 
-  void BuildOperatorMatrixIpdg(parAlmond::parCOO& A);
-  void BuildOperatorMatrixContinuous(parAlmond::parCOO& A);
-
-  void BuildOperatorMatrixContinuousTri2D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixContinuousTri3D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixContinuousQuad2D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixContinuousQuad3D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixContinuousTet3D(parAlmond::parCOO& A);
-  void BuildOperatorMatrixContinuousHex3D(parAlmond::parCOO& A);
-
-  // void BuildOperatorMatrixIpdgTri2D(parAlmond::parCOO& A);
-  // void BuildOperatorMatrixIpdgTri3D(parAlmond::parCOO& A);
-  // void BuildOperatorMatrixIpdgQuad2D(parAlmond::parCOO& A);
-  // void BuildOperatorMatrixIpdgQuad3D(parAlmond::parCOO& A);
-  // void BuildOperatorMatrixIpdgTet3D(parAlmond::parCOO& A);
-  // void BuildOperatorMatrixIpdgHex3D(parAlmond::parCOO& A);
-
-  void BuildOperatorDiagonal(memory<dfloat>& diagA);
-
-  void BuildOperatorDiagonalContinuousTri2D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalContinuousTri3D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalContinuousQuad2D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalContinuousQuad3D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalContinuousTet3D(memory<dfloat>& diagA);
-  void BuildOperatorDiagonalContinuousHex3D(memory<dfloat>& diagA);
-
-  // void BuildOperatorDiagonalIpdgTri2D(memory<dfloat>& diagA);
-  // void BuildOperatorDiagonalIpdgTri3D(memory<dfloat>& diagA);
-  // void BuildOperatorDiagonalIpdgQuad2D(memory<dfloat>& diagA);
-  // void BuildOperatorDiagonalIpdgQuad3D(memory<dfloat>& diagA);
-  // void BuildOperatorDiagonalIpdgTet3D(memory<dfloat>& diagA);
-  // void BuildOperatorDiagonalIpdgHex3D(memory<dfloat>& diagA);
+  void BuildOperatorMatrix(parAlmond::parCOO& A);
+  void BuildOperatorMatrixLaplacianTri2D(parAlmond::parCOO& A);
 
   mds_t SetupNewDegree(mesh_t& meshF);
 

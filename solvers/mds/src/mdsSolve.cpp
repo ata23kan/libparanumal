@@ -27,9 +27,9 @@ SOFTWARE.
 #include "mds.hpp"
 
 int mds_t::Solve(linearSolver_t<dfloat>& linearSolver,
-                      deviceMemory<dfloat> &o_x,
-		      deviceMemory<dfloat> &o_r,
-                      const dfloat tol, const int MAXIT, const int verbose){
+                 deviceMemory<dfloat> &o_x,
+		             deviceMemory<dfloat> &o_r,
+                 const dfloat tol, const int MAXIT, const int verbose){
 
   int Niter = linearSolver.Solve(*this, precon, o_x, o_r, tol, MAXIT, verbose);
 

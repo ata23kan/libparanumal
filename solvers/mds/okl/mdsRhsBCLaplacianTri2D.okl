@@ -41,15 +41,20 @@ SOFTWARE.
                                     @restrict const  dfloat *  y,
                                     @restrict const  dfloat *  z,
                                     @restrict const  int    *  mapB,
-                                    @restrict dfloat  *  rhs){
+                                    @restrict dfloat  *  rhsx,
+                                    @restrict dfloat  *  rhsy){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
-    @shared dfloat s_q[p_Nfields][p_Np];
+    @shared dfloat s_qx[p_Np];
+    @shared dfloat s_qy[p_Np];
+    // @shared dfloat s_q[p_Nfields][p_Np];
 
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_Np){
         for(int fld=0;fld<p_Nfields;fld++){
-          s_q[fld][n] = 0.;
+          s_qx[n] = 0.;
+          s_qy[n] = 0.;
+          // s_q[fld][n] = 0.;
         }
       }
     }
@@ -61,15 +66,15 @@ SOFTWARE.
         const int idM = vmapM[id];
         const int nid = idM%p_Np;
 
-        dfloat uP=0, vP=0;
+        dfloat uP=0., vP=0.;
 
         const int bc = mapB[idM];
         if(bc>0) {
           mdsBoundaryConditions2D(bc, x[idM], y[idM], 
                                   uP, vP);
         }
-        s_q[0][nid] = uP;
-        s_q[1][nid] = vP;
+        s_qx[nid] = uP;
+        s_qy[nid] = vP;
       }
     }
 
@@ -82,29 +87,32 @@ SOFTWARE.
         const dfloat Grs = ggeo[gid + p_G01ID];
         const dfloat Gss = ggeo[gid + p_G11ID];
 
-        // contributions for u
-        dfloat qrr_u = 0.;
-        dfloat qrs_u = 0.;
-        dfloat qss_u = 0.;
+        // contributions for x
+        dfloat qrr_x = 0.;
+        dfloat qrs_x = 0.;
+        dfloat qss_x = 0.;
 
-        // contributions for v
-        dfloat qrr_v = 0.;
-        dfloat qrs_v = 0.;
-        dfloat qss_v = 0.;
+        // contributions for y
+        dfloat qrr_y = 0.;
+        dfloat qrs_y = 0.;
+        dfloat qss_y = 0.;
         #pragma unroll p_Np
           for (int k=0;k<p_Np;k++) {
-            qrr_u += S[n+k*p_Np+0*p_Np*p_Np]*s_q[0][k];
-            qrs_u += S[n+k*p_Np+1*p_Np*p_Np]*s_q[0][k];
-            qss_u += S[n+k*p_Np+2*p_Np*p_Np]*s_q[0][k];
+            qrr_x += S[n+k*p_Np+0*p_Np*p_Np]*s_qx[k];
+            qrs_x += S[n+k*p_Np+1*p_Np*p_Np]*s_qx[k];
+            qss_x += S[n+k*p_Np+2*p_Np*p_Np]*s_qx[k];
 
-            qrr_v += S[n+k*p_Np+0*p_Np*p_Np]*s_q[1][k];
-            qrs_v += S[n+k*p_Np+1*p_Np*p_Np]*s_q[1][k];
-            qss_v += S[n+k*p_Np+2*p_Np*p_Np]*s_q[1][k];
+            qrr_y += S[n+k*p_Np+0*p_Np*p_Np]*s_qy[k];
+            qrs_y += S[n+k*p_Np+1*p_Np*p_Np]*s_qy[k];
+            qss_y += S[n+k*p_Np+2*p_Np*p_Np]*s_qy[k];
           }
 
-        const int id = n*p_Nfields + e*p_Np*p_Nfields;
-        rhs[id+0] -= Grr*qrr_u+Grs*qrs_u+Gss*qss_u;
-        rhs[id+1] -= Grr*qrr_v+Grs*qrs_v+Gss*qss_v;
+        const dlong id = n + e*p_Np;
+        rhsx[id] -= Grr*qrr_x+Grs*qrs_x+Gss*qss_x;
+        rhsy[id] -= Grr*qrr_y+Grs*qrs_y+Gss*qss_y;
+        // const int id = n*p_Nfields + e*p_Np*p_Nfields;
+        // rhs[id+0] -= Grr*qrr_u+Grs*qrs_u+Gss*qss_u;
+        // rhs[id+1] -= Grr*qrr_v+Grs*qrs_v+Gss*qss_v;
       }
     }
   }
