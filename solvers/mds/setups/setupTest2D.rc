@@ -67,23 +67,10 @@ LAPLACIAN
 [LINEAR SOLVER]
 PCG
 
-# can be NONE only
+# can be NONE, PARALMOND (Only for Laplacian deformation)
 [PRECONDITIONER]
-NONE
-
-########## MULTIGRID Options ##############
-
-# can be ALLDEGREES, HALFDEGREES, HALFDOFS
-[MULTIGRID COARSENING]
-HALFDOFS
-
-# can be DAMPEDJACOBI or CHEBYSHEV
-[MULTIGRID SMOOTHER]
-CHEBYSHEV
-
-# can be any integer >0
-[MULTIGRID CHEBYSHEV DEGREE]
-2
+#NONE
+PARALMOND
 
 ###########################################
 

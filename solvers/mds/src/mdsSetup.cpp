@@ -133,15 +133,19 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   Ndofs = ogsMasked.Ngather*Nfields;
   Nhalo = gHalo.Nhalo*Nfields;
 
-  if (settings.compareSetting("PRECONDITIONER", "NONE"))
+  if(deform_laplace){
+    if (settings.compareSetting("PRECONDITIONER", "NONE"))
+      precon.Setup<IdentityPrecon>(Ndofs);
+    else if(settings.compareSetting("PRECONDITIONER", "PARALMOND"))
+      precon.Setup<ParAlmondPrecon>(*this);
+  } else if (deform_linElastic){
     precon.Setup<IdentityPrecon>(Ndofs);
+  }
 
   // if (settings.compareSetting("PRECONDITIONER", "JACOBI"))
   //   precon.Setup<JacobiPrecon>(*this);
   // else if(settings.compareSetting("PRECONDITIONER", "MASSMATRIX"))
   //   precon.Setup<MassMatrixPrecon>(*this);
-  // else if(settings.compareSetting("PRECONDITIONER", "PARALMOND"))
-  //   precon.Setup<ParAlmondPrecon>(*this);
   // else if(settings.compareSetting("PRECONDITIONER", "MULTIGRID"))
   //   precon.Setup<MultiGridPrecon>(*this);
   // else if(settings.compareSetting("PRECONDITIONER", "SEMFEM"))

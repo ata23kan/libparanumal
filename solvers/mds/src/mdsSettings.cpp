@@ -83,23 +83,7 @@ void mdsAddSettings(settings_t& settings,
   settings.newSetting(prefix+"PRECONDITIONER",
                       "NONE",
                       "Preconditioning Strategy",
-                      {"NONE"});
-                      // {"NONE", "JACOBI", "MASSMATRIX", "PARALMOND", "MULTIGRID", "SEMFEM", "OAS"});
-
-  /* MULTIGRID options */
-  settings.newSetting(prefix+"MULTIGRID COARSENING",
-                      "HALFDOFS",
-                      "p-Multigrid coarsening strategy",
-                      {"ALLDEGREES", "HALFDEGREES", "HALFDOFS"});
-
-  settings.newSetting(prefix+"MULTIGRID SMOOTHER",
-                      "CHEBYSHEV",
-                      "p-Multigrid smoother",
-                      {"DAMPEDJACOBI", "CHEBYSHEV"});
-
-  settings.newSetting(prefix+"MULTIGRID CHEBYSHEV DEGREE",
-                      "2",
-                      "Smoothing iterations in Chebyshev smoother");
+                      {"NONE", "PARALMOND"});
 
   settings.newSetting(prefix+"VERBOSE",
                       "FALSE",
@@ -118,15 +102,7 @@ void mdsSettings_t::report() {
     reportSetting("LINEAR SOLVER");
     reportSetting("PRECONDITIONER");
 
-    if (compareSetting("PRECONDITIONER","MULTIGRID")) {
-      reportSetting("MULTIGRID COARSENING");
-      reportSetting("MULTIGRID SMOOTHER");
-      if (compareSetting("MULTIGRID SMOOTHER","CHEBYSHEV"))
-        reportSetting("MULTIGRID CHEBYSHEV DEGREE");
-    }
-
-    if (compareSetting("PRECONDITIONER","MULTIGRID")
-      ||compareSetting("PRECONDITIONER","PARALMOND"))
+    if (compareSetting("PRECONDITIONER","PARALMOND"))
       parAlmond::ReportSettings(*this);
 
     reportSetting("OUTPUT TO FILE");
