@@ -205,8 +205,9 @@ void mds_t::Run(){
   // scatter x to LocalDofs if c0
   // ogsMasked.Scatter(o_xuL, o_xu, Nfields, ogs::NoTrans);
 
+  memory<dfloat> Q(mesh.dim*mesh.Np*mesh.Nelements);
   deviceMemory<dfloat> o_Q;
-  o_Q = platform.reserve<dfloat>(Nfields*mesh.Np*mesh.Nelements);
+  o_Q = platform.reserve<dfloat>(mesh.dim*mesh.Np*mesh.Nelements);
 
   //fill masked nodes with BC data
   addBCKernel(mesh.Nelements,
@@ -240,14 +241,8 @@ void mds_t::Run(){
     char fname[BUFSIZ];
     sprintf(fname, "%s_u_%04d.vtu", name.c_str(), mesh.rank);
 
-    if(deform_laplace){
-      o_xL.copyTo(xL);
-      o_yL.copyTo(yL);
-      PlotNewMesh(xL, yL, fname);
-    } else if(deform_linElastic){
-      o_Q.copyTo(xL);
-      PlotNewMesh2(xL, fname);
-    }
+    o_Q.copyTo(Q);
+    PlotNewMesh2(Q, fname);
   }
 
   // output norm of final solution

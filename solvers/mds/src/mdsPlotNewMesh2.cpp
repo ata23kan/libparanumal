@@ -53,8 +53,8 @@ void mds_t::PlotNewMesh2(memory<dfloat>& Q, std::string fileName){
 
   // compute plot node coordinates on the fly
   for(dlong e=0;e<mesh.Nelements;++e){
-    mesh.PlotInterp(Q + 0*mesh.Np + e*mesh.Np*Nfields, Ix, scratch);
-    mesh.PlotInterp(Q + 1*mesh.Np + e*mesh.Np*Nfields, Iy, scratch);
+    mesh.PlotInterp(Q + 0*mesh.Np + e*mesh.Np*mesh.dim, Ix, scratch);
+    mesh.PlotInterp(Q + 1*mesh.Np + e*mesh.Np*mesh.dim, Iy, scratch);
     // mesh.PlotInterp(mesh.x + e*mesh.Np, Ix, scratch);
     // mesh.PlotInterp(mesh.y + e*mesh.Np, Iy, scratch);
     if(mesh.dim==3)

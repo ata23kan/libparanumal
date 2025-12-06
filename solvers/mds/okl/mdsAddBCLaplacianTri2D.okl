@@ -51,15 +51,15 @@ SOFTWARE.
     }
   }
 
-  // // Second outer loop to write Q
-  // for(int e=0;e<Nelements;e++;@outer(0)){
-  //   for(int n=0; n<p_Np;++n;@inner(0)){
+  // Second outer loop to write Q
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0; n<p_Np;++n;@inner(0)){
 
-  //     const dlong id  = n + e*p_Np*2;
-  //     const dlong iid = n + e*p_Np;
+      const dlong id  = n + e*p_Np*2;
+      const dlong iid = n + e*p_Np;
 
-  //     Q[id+0*p_Np] = qx[iid];
-  //     Q[id+1*p_Np] = qy[iid];
-  //   }
-  // }
+      Q[id+0*p_Np] = qx[iid];
+      Q[id+1*p_Np] = qy[iid];
+    }
+  }
 }
