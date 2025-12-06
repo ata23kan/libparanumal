@@ -42,7 +42,7 @@ SOFTWARE.
 
       dfloat uP=0, vP=0;
 
-      if(bc==1) {
+      if(bc>0) {
         mdsBoundaryConditions2D(bc, x[iid], y[iid],
                                 uP, vP);
         qx[id+0] = uP;
