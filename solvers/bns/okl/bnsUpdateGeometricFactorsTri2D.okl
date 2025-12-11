@@ -39,7 +39,7 @@ SOFTWARE.
 	for(dlong eo=0;eo<Nelements;++eo;@tile(p_blockSize,@outer,@inner)){
 
 		const dlong e = elementIds[eo];
-		const dlong id = e*p_NpN1*p_NfieldsN1;
+		const dlong id = e*p_NpN1*2;
 
 		const dfloat xe1 = VX[id+0];
 		const dfloat xe2 = VX[id+1];
@@ -54,6 +54,10 @@ SOFTWARE.
 		const dfloat ry = -(0.5/J)*(xe3-xe1);
 		const dfloat sx = -(0.5/J)*(ye2-ye1);
 		const dfloat sy =  (0.5/J)*(xe2-xe1);
+
+		if(J<0){
+			printf("Negative Jacobian at e:%d, with J: %lf\n", e, J);
+		}
 
 		const dlong vgeoid = e*p_Nvgeo;
 
@@ -95,7 +99,7 @@ SOFTWARE.
 	for(dlong eo=0;eo<Nelements;++eo;@tile(p_blockSize,@outer,@inner)){
 		const dlong e = elementIds[eo];
 
-		const dlong id = e*p_NpN1*p_NfieldsN1;
+		const dlong id = e*p_NpN1*2;
 
 		const dfloat xe1 = VX[id+0];
 		const dfloat xe2 = VX[id+1];

@@ -91,20 +91,35 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
   //                             o_rhsX,
   //                             o_Vx);
 
-
   // } // end case 2 (PLUNGINGAIRFOIL)
 
   // case 3:{
-
     // AA: This may only solve for nonPml elements
     dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
 
-    deviceMemory<dfloat> o_rhsV = platform.reserve<dfloat>(Ntotal);
-    deviceMemory<dfloat> o_vL   = platform.reserve<dfloat>(Ntotal);
+    // Create the solution and rhs vectors in every direction
+    deviceMemory<dfloat> o_rhsVx = platform.reserve<dfloat>(Ntotal);
+    deviceMemory<dfloat> o_vxL   = platform.reserve<dfloat>(Ntotal);
+    deviceMemory<dfloat> o_rhsVy, o_vyL;
 
-    // set x to zero
-    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_vL);
-    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsV);
+    // set solution vector to zero
+    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsVx);
+    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_vxL);
+
+    // Create gather arrays
+    deviceMemory<dfloat> o_GrhsVx = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    deviceMemory<dfloat> o_Gvx    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    deviceMemory<dfloat> o_GrhsVy, o_Gvy;
+
+    if(mdsSolver.deform_laplace){
+      o_rhsVy = platform.reserve<dfloat>(Ntotal);
+      o_vyL   = platform.reserve<dfloat>(Ntotal);
+      platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_rhsVy);
+      platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_vyL);
+
+      o_GrhsVy = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+      o_Gvy    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    }
 
     aleRhsKernel(mesh.Nelements,
                  meshN1.o_wJ,
@@ -120,22 +135,39 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                  meshN1.o_y,
                  meshN1.o_z,
                  mdsSolver.o_mapB,
-                 o_rhsV);
+                 o_rhsVx,
+                 o_rhsVy);
 
     int maxIter = 5000;
     int verbose = 0;
 
-    // Create gather arrays
-    deviceMemory<dfloat> o_GrhsV = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-    deviceMemory<dfloat> o_Gv    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
 
     // Gather - Solve - Scatter
-    mdsSolver.ogsMasked.Gather(o_GrhsV, o_rhsV, mdsNfields, ogs::Add, ogs::Trans);
-    mdsSolver.ogsMasked.Gather(o_Gv, o_vL, mdsNfields, ogs::Add, ogs::NoTrans);
-    Niter = mdsSolver.Solve(mdsLinearSolver, o_Gv, o_GrhsV, mdsTOL, maxIter, verbose);
-    // printf("Total Number of Iterations: %d\n", Niter);
-    mdsSolver.ogsMasked.Scatter(o_vL, o_Gv, mdsNfields, ogs::NoTrans);
-    o_GrhsV.free(); o_Gv.free();
+    mdsSolver.ogsMasked.Gather(o_GrhsVx, o_rhsVx, mdsNfields, ogs::Add, ogs::Trans);
+    mdsSolver.ogsMasked.Gather(o_Gvx, o_vxL, mdsNfields, ogs::Add, ogs::NoTrans);
+
+    if(mdsSolver.deform_laplace){
+
+      mdsSolver.ogsMasked.Gather(o_GrhsVy, o_rhsVy, 1, ogs::Add, ogs::Trans);
+      mdsSolver.ogsMasked.Gather(o_Gvy, o_vyL, 1, ogs::Add, ogs::NoTrans);
+
+      int Nitery;
+      Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
+      // printf("Total Number of Iterations in x: %d\n", Niter);
+      // printf("Total Number of Iterations in y: %d\n", Nitery);
+
+      mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, 1, ogs::NoTrans);
+      mdsSolver.ogsMasked.Scatter(o_vyL, o_Gvy, 1, ogs::NoTrans);
+      o_GrhsVx.free(); o_Gvx.free();
+      o_GrhsVy.free(); o_Gvy.free();
+
+    } else if(mdsSolver.deform_linElastic){
+      Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      // printf("Total Number of Iterations: %d\n", Niter);
+      mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, mdsNfields, ogs::NoTrans);
+      o_GrhsVx.free(); o_Gvx.free();      
+    }
 
     aleBCKernel(meshN1.Nelements,
                 meshN1.o_x,
@@ -144,7 +176,8 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                 T,
                 mdsSolver.o_mapB,
                 o_rhsX,
-                o_vL); 
+                o_vxL, 
+                o_vyL); 
 
   // } // end case 3 (Solve Mesh)
 

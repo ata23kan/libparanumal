@@ -235,8 +235,8 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   o_meshVelx = platform.malloc<dfloat>(meshVelx);
   o_meshVely = platform.malloc<dfloat>(meshVely);
 
-  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
-  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
+  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*2);
+  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*2);
 
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
@@ -416,11 +416,12 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
     kernelName = "aleRhsLinElastic" + suffix;
     aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+    kernelName = "aleBCLinElastic" + suffix;
+    aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
   }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
     kernelName = "aleRhsLaplace" + suffix;
     aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+    kernelName = "aleBCLaplace" + suffix;
+    aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
   }
-  kernelName = "aleBC" + suffix;
-  aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
-
 }

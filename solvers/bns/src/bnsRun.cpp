@@ -48,8 +48,7 @@ void bns_t::Run(){
                         o_VX);
 
   // Hold the initial positions for explicit deformation
-  int NAle = meshN1.Np*meshN1.Nelements*mdsNfields;
-  o_VX0.copyFrom(o_VX, NAle, 0, properties_t("async", true));
+  o_VX0.copyFrom(o_VX, meshN1.Np*meshN1.Nelements*2, 0, properties_t("async", true));
 
   if (mesh.NpmlElements)
     pmlInitialConditionKernel(mesh.NpmlElements,
