@@ -83,12 +83,12 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
   std::string fileName, kernelName;
 
   //add standard boundary functions
-  std::string boundaryHeaderFileName;
-  if (mesh.dim==2)
-    boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary2D.h");
-  else if (mesh.dim==3)
-    boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary3D.h");
-  kernelInfo["includes"] += boundaryHeaderFileName;
+  // std::string boundaryHeaderFileName;
+  // if (mesh.dim==2)
+  //   boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary2D.h");
+  // else if (mesh.dim==3)
+  //   boundaryHeaderFileName = std::string(DMDS "/data/mdsBoundary3D.h");
+  // kernelInfo["includes"] += boundaryHeaderFileName;
 
   int blockMax = 256;
   if (platform.device.mode() == "CUDA") blockMax = 512;
