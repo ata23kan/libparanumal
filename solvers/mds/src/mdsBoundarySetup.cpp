@@ -29,6 +29,40 @@ SOFTWARE.
 
 void mds_t::BoundarySetup(){
 
+  // //translate the mesh's element-to-boundaryflag mapping
+  // EToB.malloc(mesh.Nelements*mesh.Nfaces, 0);
+  // for (dlong e=0;e<mesh.Nelements;e++) {
+  //   for (int f=0;f<mesh.Nfaces;f++) {
+  //     int bc = mesh.EToB[e*mesh.Nfaces+f];
+  //     if (bc>0) {
+  //       int BC = BCType[bc];         //translate mesh's boundary flag
+  //       EToB[e*mesh.Nfaces+f] = BC;  //record it
+  //       // if (BC!=2) allNeumann = 0;   //check if its a Dirchlet
+  //     }
+  //   }
+  // }
+  // o_EToB = platform.malloc<int>(EToB);
+
+  // //translate the mesh's node-wise bc flag
+  // Nmasked = 0;
+  // mapB.malloc((mesh.Nelements+mesh.totalHaloPairs)*mesh.Np, 0);
+  // for (int n=0;n<mesh.Nelements*mesh.Np;n++) {
+  //   int bc = mesh.mapB[n];
+  //   if (bc>0) {
+  //     int BC = BCType[bc];     //translate mesh's boundary flag
+  //     mapB[n] = BC;  //record it
+  //     // if(bc==3){
+  //     //   printf("Outflow boundary!\n");
+  //     //   printf("Mapped BC: %d\n", BC);
+  //     //   std::exit(EXIT_SUCCESS);
+  //     // }
+
+  //     if (mapB[n] > 0) Nmasked++;   //Dirichlet boundary
+  //     // if (mapB[n] == 1) Nmasked++;   //Dirichlet boundary
+  //   }
+  // }
+  // o_mapB = platform.malloc<int>(mapB);
+  
   //translate the mesh's element-to-boundaryflag mapping
   EToB.malloc(mesh.Nelements*mesh.Nfaces, 0);
   for (dlong e=0;e<mesh.Nelements;e++) {
