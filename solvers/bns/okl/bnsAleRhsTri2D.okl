@@ -161,11 +161,8 @@ SOFTWARE.
 
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_Np){
-        for(int fld=0; fld<p_Nfields; fld++){
         s_qx[n] = 0.;
         s_qy[n] = 0.;
-        // s_q[fld][n] = 0.;
-        }
       }
     }
 

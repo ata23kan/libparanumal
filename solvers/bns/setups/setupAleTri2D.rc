@@ -2,7 +2,8 @@
 2.0
 
 [DATA FILE]
-data/bnsAle2D.h
+data/bnsAleFlexibleRod2D.h
+#data/bnsAle2D.h
 
 [ALE TEST]
 PLUNGINGAIRFOIL
@@ -10,7 +11,8 @@ PLUNGINGAIRFOIL
 #BOX
 
 [MESH FILE]
-mesh/naca0012.msh
+mesh/flexible_rod_pml.msh
+#mesh/naca0012.msh
 #PMLBOX
 #BOX
 
@@ -96,11 +98,35 @@ bns
 [MDS LINEAR SOLVER]
 PCG
 
+# Linear Elasticity does not work with PML
 [MDS DEFORMATION METHOD]
 LAPLACIAN
 #LINEARELASTIC
 
-# can be NONE only
+# can be NONE, PARALMOND (Only for Laplacian deformation)
 [MDS PRECONDITIONER]
-NONE
+#NONE
+PARALMOND
 
+###########################################
+
+########## ParAlmond Options ##############
+
+# can be KCYCLE, or VCYCLE
+# can add the EXACT and NONSYM option
+[MDS PARALMOND CYCLE]
+VCYCLE
+
+# can be SMOOTHED or UNSMOOTHED
+[MDS PARALMOND AGGREGATION]
+SMOOTHED
+
+# can be DAMPEDJACOBI or CHEBYSHEV
+[MDS PARALMOND SMOOTHER]
+CHEBYSHEV
+
+# can be any integer >0
+[MDS PARALMOND CHEBYSHEV DEGREE]
+2
+
+###########################################

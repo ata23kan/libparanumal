@@ -167,7 +167,7 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   // bc = 1 -> moving airfoil 
   // bc = 2 -> stationary boundary
   // wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, physical bounding box 6
-  int NBCTypes = 7;
+  int NBCTypes = 11;
   memory<int> mdsBCType(NBCTypes);
   mdsBCType[0] = 0;
   mdsBCType[1] = 1;
@@ -176,6 +176,10 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   mdsBCType[4] = 2;
   mdsBCType[5] = 2;
   mdsBCType[6] = 6;
+  mdsBCType[7] = 2;
+  mdsBCType[8] = 2;
+  mdsBCType[9] = 2;
+  mdsBCType[10] = 2;
 
   // Build low order mesh for deformation
   meshN1 = mesh.SetupNewDegree(1);
