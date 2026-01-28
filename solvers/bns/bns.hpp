@@ -141,6 +141,10 @@ public:
 
   void PlotFields(memory<dfloat>& Q, memory<dfloat>& V, std::string fileName);
 
+  void PlotConstantError(memory<dfloat>& Q, dfloat rbar, dfloat Ubar, dfloat Vbar, std::string fileName);
+
+  void constantErrorNorm(memory<dfloat>& Q, dfloat rbar, dfloat Ubar, dfloat Vbar);
+  
   dfloat MaxWaveSpeed();
 
   void rhsf_pml(deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_pmlQ,

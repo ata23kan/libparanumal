@@ -47,7 +47,7 @@ SOFTWARE.
 			 	const dlong et = eo+es; // element in block
 			 	if(et<Nelements){
 			 		const dlong e = elementIds[et];
-					const dlong id = n + e*p_Np*p_Nfields;
+					const dlong id = n + e*p_Np*2;
 					const dfloat x_0 = VX0[id+0*p_Np];
 					const dfloat y_0 = VX0[id+1*p_Np];
 					const dfloat Sx = sin(kx*x_0);

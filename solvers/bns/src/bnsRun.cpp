@@ -79,7 +79,8 @@ void bns_t::Run(){
       settings.compareSetting("TIME INTEGRATOR","MRSAAB3"))
     dt /= (1<<(mesh.mrNlevels-1));
 #endif
-  timeStepper.SetTimeStep(dt);
+  timeStepper.SetTimeStep(dt*0.05);
+  // printf("Initial time step: %e\n", timeStepper.GetTimeStep());
 
   // timeStepper.RunWithAle(*this, o_q, o_VX, startTime, finalTime);
   timeStepper.RunWithAlePml(*this, o_q, o_VX, o_pmlq, startTime, finalTime);

@@ -29,6 +29,7 @@ SOFTWARE.
 void bns_t::Report(dfloat time, int tstep){
 
   static int frame=0;
+  static int error_frame = 0;
 
   //compute q.M*q
   dlong Nentries = mesh.Nelements*mesh.Np*Nfields;
@@ -64,6 +65,16 @@ void bns_t::Report(dfloat time, int tstep){
     sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
 
     PlotFields(q, Vort, std::string(fname));
+
+    if(testCase==1){
+      char fname2[BUFSIZ];
+      sprintf(fname2, "%s_error_%04d_%04d.vtu", name.c_str(), mesh.rank, error_frame++);
+
+      PlotConstantError(q, 1.f, 1.f, 1.f, std::string(fname2));
+      constantErrorNorm(q, 1.f, 1.f, 1.f);
+
+    }
+
   }
 
   /*

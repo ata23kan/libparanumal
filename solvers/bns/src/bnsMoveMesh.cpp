@@ -33,32 +33,32 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
   // default:
   // case 1:{
-  //   const dlong nx = 1;
-  //   const dlong ny = 1;
-  //   const dlong nt = 1;
-  //   const dlong Lx = 20;  // BOX DIMX
-  //   const dlong Ly = 20;  // BOX DIMY
-  //   const dfloat t0 = sqrt(50);
-  //   const dfloat Ax = 0.5;
-  //   const dfloat Ay = 0.5;
+    const dlong nx = 1;
+    const dlong ny = 1;
+    const dlong nt = 1;
+    const dlong Lx = 20;  // BOX DIMX
+    const dlong Ly = 20;  // BOX DIMY
+    const dfloat t0 = sqrt(200);
+    const dfloat Ax = 0.95;
+    const dfloat Ay = 0.95;
 
-  //   const dfloat omega = 2 * PI * nt / t0;
-  //   // const dfloat S     = sin(omega * T);
-  //   const dfloat kx    = 2 * PI * nx / Lx;
-  //   const dfloat ky    = 2 * PI * ny / Ly;
+    const dfloat omega = 2 * PI * nt / t0;
+    // const dfloat S     = sin(omega * T);
+    const dfloat kx    = 2 * PI * nx / Lx;
+    const dfloat ky    = 2 * PI * ny / Ly;
 
-  //   // Explicit deformation
-  //   explicitDeformationKernel(mesh.NnonPmlElements,
-  //                             mesh.o_nonPmlElements,
-  //                             T,
-  //                             Ax,
-  //                             Ay,
-  //                             kx,
-  //                             ky,
-  //                             omega,
-  //                             o_VX0,
-  //                             o_rhsX,
-  //                             o_Vx);
+    // Explicit deformation
+    explicitDeformationKernel(mesh.NnonPmlElements,
+                              mesh.o_nonPmlElements,
+                              T,
+                              Ax,
+                              Ay,
+                              kx,
+                              ky,
+                              omega,
+                              o_VX0,
+                              o_rhsX,
+                              o_Vx);
   // } // end case 1 (BOX)
 
   // case 2:{
@@ -94,90 +94,90 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
   // } // end case 2 (PLUNGINGAIRFOIL)
 
   // case 3:{
-    // AA: This may only solve for nonPml elements
-    dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
+    // // AA: This may only solve for nonPml elements
+    // dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
 
-    // Create the solution and rhs vectors in every direction
-    deviceMemory<dfloat> o_rhsVx = platform.reserve<dfloat>(Ntotal);
-    deviceMemory<dfloat> o_vxL   = platform.reserve<dfloat>(Ntotal);
-    deviceMemory<dfloat> o_rhsVy, o_vyL;
+    // // Create the solution and rhs vectors in every direction
+    // deviceMemory<dfloat> o_rhsVx = platform.reserve<dfloat>(Ntotal);
+    // deviceMemory<dfloat> o_vxL   = platform.reserve<dfloat>(Ntotal);
+    // deviceMemory<dfloat> o_rhsVy, o_vyL;
 
-    // set solution vector to zero
-    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsVx);
-    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_vxL);
+    // // set solution vector to zero
+    // platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsVx);
+    // platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_vxL);
 
-    // Create gather arrays
-    deviceMemory<dfloat> o_GrhsVx = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-    deviceMemory<dfloat> o_Gvx    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-    deviceMemory<dfloat> o_GrhsVy, o_Gvy;
+    // // Create gather arrays
+    // deviceMemory<dfloat> o_GrhsVx = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    // deviceMemory<dfloat> o_Gvx    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    // deviceMemory<dfloat> o_GrhsVy, o_Gvy;
 
-    if(mdsSolver.deform_laplace){
-      o_rhsVy = platform.reserve<dfloat>(Ntotal);
-      o_vyL   = platform.reserve<dfloat>(Ntotal);
-      platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_rhsVy);
-      platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_vyL);
+    // if(mdsSolver.deform_laplace){
+    //   o_rhsVy = platform.reserve<dfloat>(Ntotal);
+    //   o_vyL   = platform.reserve<dfloat>(Ntotal);
+    //   platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_rhsVy);
+    //   platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_vyL);
 
-      o_GrhsVy = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-      o_Gvy    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-    }
+    //   o_GrhsVy = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    //   o_Gvy    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    // }
 
-    aleRhsKernel(mesh.Nelements,
-                 meshN1.o_wJ,
-                 meshN1.o_ggeo,
-                 meshN1.o_vgeo,
-                 meshN1.o_S,
-                 meshN1.o_Se,
-                 meshN1.o_vmapM,
-                 mdsLambda,
-                 mdsMu,
-                 T,
-                 meshN1.o_x,
-                 meshN1.o_y,
-                 meshN1.o_z,
-                 mdsSolver.o_mapB,
-                 o_rhsVx,
-                 o_rhsVy);
+    // aleRhsKernel(mesh.Nelements,
+    //              meshN1.o_wJ,
+    //              meshN1.o_ggeo,
+    //              meshN1.o_vgeo,
+    //              meshN1.o_S,
+    //              meshN1.o_Se,
+    //              meshN1.o_vmapM,
+    //              mdsLambda,
+    //              mdsMu,
+    //              T,
+    //              meshN1.o_x,
+    //              meshN1.o_y,
+    //              meshN1.o_z,
+    //              mdsSolver.o_mapB,
+    //              o_rhsVx,
+    //              o_rhsVy);
 
-    int maxIter = 5000;
-    int verbose = 0;
+    // int maxIter = 5000;
+    // int verbose = 0;
 
 
-    // Gather - Solve - Scatter
-    mdsSolver.ogsMasked.Gather(o_GrhsVx, o_rhsVx, mdsNfields, ogs::Add, ogs::Trans);
-    mdsSolver.ogsMasked.Gather(o_Gvx, o_vxL, mdsNfields, ogs::Add, ogs::NoTrans);
+    // // Gather - Solve - Scatter
+    // mdsSolver.ogsMasked.Gather(o_GrhsVx, o_rhsVx, mdsNfields, ogs::Add, ogs::Trans);
+    // mdsSolver.ogsMasked.Gather(o_Gvx, o_vxL, mdsNfields, ogs::Add, ogs::NoTrans);
 
-    if(mdsSolver.deform_laplace){
+    // if(mdsSolver.deform_laplace){
 
-      mdsSolver.ogsMasked.Gather(o_GrhsVy, o_rhsVy, 1, ogs::Add, ogs::Trans);
-      mdsSolver.ogsMasked.Gather(o_Gvy, o_vyL, 1, ogs::Add, ogs::NoTrans);
+    //   mdsSolver.ogsMasked.Gather(o_GrhsVy, o_rhsVy, 1, ogs::Add, ogs::Trans);
+    //   mdsSolver.ogsMasked.Gather(o_Gvy, o_vyL, 1, ogs::Add, ogs::NoTrans);
 
-      int Nitery;
-      Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
-      Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
-      // printf("Total Number of Iterations in x: %d\n", Niter);
-      // printf("Total Number of Iterations in y: %d\n", Nitery);
+    //   int Nitery;
+    //   Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+    //   Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
+    //   // printf("Total Number of Iterations in x: %d\n", Niter);
+    //   // printf("Total Number of Iterations in y: %d\n", Nitery);
 
-      mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, 1, ogs::NoTrans);
-      mdsSolver.ogsMasked.Scatter(o_vyL, o_Gvy, 1, ogs::NoTrans);
-      o_GrhsVx.free(); o_Gvx.free();
-      o_GrhsVy.free(); o_Gvy.free();
+    //   mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, 1, ogs::NoTrans);
+    //   mdsSolver.ogsMasked.Scatter(o_vyL, o_Gvy, 1, ogs::NoTrans);
+    //   o_GrhsVx.free(); o_Gvx.free();
+    //   o_GrhsVy.free(); o_Gvy.free();
 
-    } else if(mdsSolver.deform_linElastic){
-      Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
-      // printf("Total Number of Iterations: %d\n", Niter);
-      mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, mdsNfields, ogs::NoTrans);
-      o_GrhsVx.free(); o_Gvx.free();      
-    }
+    // } else if(mdsSolver.deform_linElastic){
+    //   Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+    //   // printf("Total Number of Iterations: %d\n", Niter);
+    //   mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, mdsNfields, ogs::NoTrans);
+    //   o_GrhsVx.free(); o_Gvx.free();      
+    // }
 
-    aleBCKernel(meshN1.Nelements,
-                meshN1.o_x,
-                meshN1.o_y,
-                meshN1.o_z,
-                T,
-                mdsSolver.o_mapB,
-                o_rhsX,
-                o_vxL, 
-                o_vyL); 
+    // aleBCKernel(meshN1.Nelements,
+    //             meshN1.o_x,
+    //             meshN1.o_y,
+    //             meshN1.o_z,
+    //             T,
+    //             mdsSolver.o_mapB,
+    //             o_rhsX,
+    //             o_vxL, 
+    //             o_vyL); 
 
   // } // end case 3 (Solve Mesh)
 

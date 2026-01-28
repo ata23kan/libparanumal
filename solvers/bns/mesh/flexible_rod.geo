@@ -1,5 +1,5 @@
-lc_box = 1.0;    // Mesh size far field
-lc_wall = 0.5;  // Mesh size near structure
+lc_box = 0.25;    // Mesh size far field
+lc_wall = 0.025;  // Mesh size near structure
 
 // Geometry Dimensions
 D = 1;   // Square side length
