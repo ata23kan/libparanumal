@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include "core.hpp"
 #include "timeStepper.hpp"
+#include "timer.hpp"
 
 namespace libp {
 
@@ -240,6 +241,7 @@ void lserk4::RunWithAle(solver_t& solver,
       stepdt = dt;
     }
 
+    // printf("time step: %d, time: %lf\n",tstep, time);
     ALEStep(solver, o_q, o_VX, o_pmlq, time, stepdt);
     time += stepdt;
     tstep++;
@@ -278,8 +280,8 @@ void lserk4::ALEStep(solver_t& solver,
     solver.MoveMesh(o_VX, o_rhsX, currentTime);
 
     // // Update the positions using Runge-Kutta
-    updateKernel(NAle, _dt, rka[rk], rkb[rk],
-                 o_rhsX, o_resX, o_VX);
+    // updateKernel(NAle, _dt, rka[rk], rkb[rk],
+    //              o_rhsX, o_resX, o_VX);
 
     // Update the geometric factors in the stage
     solver.UpdateGeo(o_VX);
@@ -287,12 +289,16 @@ void lserk4::ALEStep(solver_t& solver,
     // Update interpolation nodes
     solver.UpdateX(o_VX);
 
+    // timePoint_t startGeo = GlobalPlatformTime(platform);
     //evaluate ODE rhs = f(q,t)
     if (o_pmlq.has_value()) {
       solver.rhsf_pml(o_q, o_pmlq.value(), o_rhsq, o_rhspmlq, currentTime);
     } else {
       solver.rhsf(o_q, o_rhsq, currentTime);
     }
+    // timePoint_t endGeo = GlobalPlatformTime(platform);
+    // dfloat elapsed = ElapsedTime(startGeo,endGeo);
+    // printf("ElapsedTime: %lf\n", elapsed);
 
     // update solution using Runge-Kutta
     updateKernel(N, _dt, rka[rk], rkb[rk],

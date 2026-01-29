@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-@kernel void interpolateVelocityTri2D(const dlong Nelements,
+@kernel void interpolateVelocityTet3D(const dlong Nelements,
 																			@restrict const dlong  *  elementIds,
 																			@restrict const dfloat *  IM,
 																			@restrict       dfloat *  rhsX,
@@ -39,6 +39,7 @@ SOFTWARE.
 
 		@shared dfloat s_vx[p_NblockV][p_NpN1];
 		@shared dfloat s_vy[p_NblockV][p_NpN1];
+		@shared dfloat s_vz[p_NblockV][p_NpN1];
 
 		for(int es=0;es<p_NblockV;++es;@inner(1)){ // Elements in the block
 			for(int n=0;n<p_Np;++n;@inner(0)){
@@ -46,10 +47,11 @@ SOFTWARE.
 				if(n<p_NpN1){
 					if(et<Nelements){
 						const dlong e = elementIds[et];
-						const dlong id = n + e*p_NpN1*2;
+						const dlong id = n + e*p_NpN1*3;
 						// const dlong id = n + e*p_NpN1*p_NfieldsN1;
 						s_vx[es][n] = rhsX[id+0*p_NpN1];
 						s_vy[es][n] = rhsX[id+1*p_NpN1];
+						s_vz[es][n] = rhsX[id+2*p_NpN1];
 					}
 				}
 			}
@@ -64,16 +66,19 @@ SOFTWARE.
 
 					dfloat mQ_x = 0.;
 					dfloat mQ_y = 0.;
+					dfloat mQ_z = 0.;
 
 					#pragma unroll p_NpN1
 						for(int i=0;i<p_NpN1;i++){
 							mQ_x += IM[i+n*p_NpN1]*s_vx[es][i];
 							mQ_y += IM[i+n*p_NpN1]*s_vy[es][i];
+							mQ_z += IM[i+n*p_NpN1]*s_vz[es][i];
 						}
 
 					const dlong id = e*p_Np + n;
 					meshVelx[id] = mQ_x;
 					meshVely[id] = mQ_y;
+					meshVelz[id] = mQ_z;
 				}
 			}
 		}
@@ -81,7 +86,7 @@ SOFTWARE.
 }		 // end velocity interpolation kernel
 
 
-@kernel void interpolatePositionTri2D(const dlong Nelements,
+@kernel void interpolatePositionTet3D(const dlong Nelements,
 																			@restrict const dlong  *  elementIds,
 																			@restrict const dfloat *  IM,
 																			@restrict       dfloat *  VX,
@@ -96,6 +101,7 @@ SOFTWARE.
 
 		@shared dfloat s_x[p_NblockV][p_NpN1];
 		@shared dfloat s_y[p_NblockV][p_NpN1];
+		@shared dfloat s_z[p_NblockV][p_NpN1];
 
     for(int es=0;es<p_NblockV;++es;@inner(1)){ // Elements in the block
     	for(int n=0;n<p_Np;++n;@inner(0)){			 // Nodes in the element
@@ -103,15 +109,17 @@ SOFTWARE.
     		if(n<p_NpN1){
     			if(et<Nelements){
     				const dlong e = elementIds[et];
-    				const dlong id  = n + e*p_NpN1*2;
+    				const dlong id  = n + e*p_NpN1*3;
     				const dlong iid = n + e*p_NpN1;
     				
     				s_x[es][n] = VX[id+0*p_NpN1];
     				s_y[es][n] = VX[id+1*p_NpN1];
+    				s_z[es][n] = VX[id+2*p_NpN1];
 
     				// Update low order mesh vertex positions
     				N1x[iid] = VX[id+0*p_NpN1];
     				N1y[iid] = VX[id+1*p_NpN1];
+    				N1z[iid] = VX[id+2*p_NpN1];
     			}
     		}
     	}
@@ -127,15 +135,18 @@ SOFTWARE.
 
     			dfloat mQ_x = 0.;
     			dfloat mQ_y = 0.;
+    			dfloat mQ_z = 0.;
 
     			#pragma unroll p_NpN1
     				for(int i=0;i<p_NpN1;i++){
     					mQ_x += IM[i+n*p_NpN1]*s_x[es][i];
     					mQ_y += IM[i+n*p_NpN1]*s_y[es][i];
+    					mQ_z += IM[i+n*p_NpN1]*s_z[es][i];
     				}
 					const dlong id = e*p_Np + n;
 					x[id] = mQ_x;
 					y[id] = mQ_y;
+					z[id] = mQ_z;
     		}
     	}
     }

@@ -33,32 +33,32 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
   // default:
   // case 1:{
-    const dlong nx = 1;
-    const dlong ny = 1;
-    const dlong nt = 1;
-    const dlong Lx = 20;  // BOX DIMX
-    const dlong Ly = 20;  // BOX DIMY
-    const dfloat t0 = sqrt(200);
-    const dfloat Ax = 0.95;
-    const dfloat Ay = 0.95;
+    // const dlong nx = 1;
+    // const dlong ny = 1;
+    // const dlong nt = 1;
+    // const dlong Lx = 20;  // BOX DIMX
+    // const dlong Ly = 20;  // BOX DIMY
+    // const dfloat t0 = sqrt(200);
+    // const dfloat Ax = 0.95;
+    // const dfloat Ay = 0.95;
 
-    const dfloat omega = 2 * PI * nt / t0;
-    // const dfloat S     = sin(omega * T);
-    const dfloat kx    = 2 * PI * nx / Lx;
-    const dfloat ky    = 2 * PI * ny / Ly;
+    // const dfloat omega = 2 * PI * nt / t0;
+    // // const dfloat S     = sin(omega * T);
+    // const dfloat kx    = 2 * PI * nx / Lx;
+    // const dfloat ky    = 2 * PI * ny / Ly;
 
-    // Explicit deformation
-    explicitDeformationKernel(mesh.NnonPmlElements,
-                              mesh.o_nonPmlElements,
-                              T,
-                              Ax,
-                              Ay,
-                              kx,
-                              ky,
-                              omega,
-                              o_VX0,
-                              o_rhsX,
-                              o_Vx);
+    // // Explicit deformation
+    // explicitDeformationKernel(mesh.NnonPmlElements,
+    //                           mesh.o_nonPmlElements,
+    //                           T,
+    //                           Ax,
+    //                           Ay,
+    //                           kx,
+    //                           ky,
+    //                           omega,
+    //                           o_VX0,
+    //                           o_rhsX,
+    //                           o_Vx);
   // } // end case 1 (BOX)
 
   // case 2:{
@@ -181,8 +181,23 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
   // } // end case 3 (Solve Mesh)
 
+  // case 4:{ 
+    // Explicit deformation
+    const dfloat A  = 3.141592654359/6.;
+    const dfloat TG = 20;
+    explicitDeformationKernel(mesh.NnonPmlElements,
+                              mesh.o_nonPmlElements,
+                              T,
+                              A,
+                              TG,
+                              o_VX0,
+                              o_rhsX,
+                              o_Vx);
+  // } // end case 4 (3D TGV)
+
   // }
   // Interpolate vertex velocities to the computational nodes
+
   velInterpolationKernel(mesh.NnonPmlElements,
                          mesh.o_nonPmlElements,
                          o_IM,
@@ -191,5 +206,6 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                          mesh.o_y,
                          mesh.o_z,
                          o_meshVelx,
-                         o_meshVely);  
+                         o_meshVely,  
+                         o_meshVelz);  
 }

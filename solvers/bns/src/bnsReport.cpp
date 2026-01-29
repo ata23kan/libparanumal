@@ -40,7 +40,7 @@ void bns_t::Report(dfloat time, int tstep){
   o_Mq.free();
 
   if(mesh.rank==0)
-    printf("%5.2f (%d), %5.2f (time, timestep, norm)\n", time, tstep, norm2);
+    printf("%5.2f (%d), %5.4f (time, timestep, norm)\n", time, tstep, norm2);
 
   if (settings.compareSetting("OUTPUT TO FILE","TRUE")) {
 

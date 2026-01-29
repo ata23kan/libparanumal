@@ -1,0 +1,86 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017-2022 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+
+// Deformation in N. Fehn, J. Heinz, W. A. Wall, and M. Kronbichler, 
+// “High-order arbitrary Lagrangian–Eulerian discontinuous Galerkin methods for the 
+// incompressible Navier–Stokes equations,” Journal of Computational Physics, 
+//  vol. 430, p. 110040, Apr. 2021
+
+#define PI 3.14159265359
+#define L  6.28318530718
+
+@kernel void explicitDeformationTGVTet3D(const dlong Nelements,
+																				 @restrict const dlong  * elementIds,
+																		  	 					 const dfloat   t,
+																		  	 					 const dfloat   A,
+																		  	 					 const dfloat   TG,
+																		  	 @restrict const dfloat * VX0,
+																		  	 @restrict       dfloat * rhsX,
+																		  	 @restrict       dfloat * VX){
+
+	for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+
+		for(int es=0;es<p_NblockV;++es;@inner(1)){ // For all elements in the block
+			 for(int n=0;n<p_Np;++n;@inner(0)){ // For all nodes in this element
+			 	const dlong et = eo+es; // element in block
+			 	if(et<Nelements){
+			 		const dlong e = elementIds[et];
+					const dlong id = n + e*p_Np*3;
+					const dfloat x0 = VX0[id+0*p_Np];
+					const dfloat y0 = VX0[id+1*p_Np];
+					const dfloat z0 = VX0[id+2*p_Np];
+
+					const dfloat sx = sin(2*PI*(x0 + 0.5*L)/L);
+					const dfloat sy = sin(2*PI*(y0 + 0.5*L)/L);
+					const dfloat sz = sin(2*PI*(z0 + 0.5*L)/L);
+
+					// Time factors
+					const dfloat theta = 2*PI*t/TG;
+					const dfloat S  = sin(theta);
+					const dfloat Ct = cos(theta);
+
+					// deformation direction g(chi)
+          const dfloat gx = sy*sz;
+          const dfloat gy = sx*sz;
+          const dfloat gz = sx*sy;
+
+					// positions: x = chi + A*sin(2*pi t/TG) * g(chi)
+          VX[id + 0*p_Np] = x0 + A*S*gx;
+          VX[id + 1*p_Np] = y0 + A*S*gy;
+          VX[id + 2*p_Np] = z0 + A*S*gz; 
+
+          // velocities: w = d/dt x = A*(2*pi/TG)*cos(2*pi t/TG) * g(chi)
+					const dfloat timeFactor = A*(2*PI/TG)*Ct;
+
+          rhsX[id + 0*p_Np] = timeFactor*gx;
+          rhsX[id + 1*p_Np] = timeFactor*gy;
+          rhsX[id + 2*p_Np] = timeFactor*gz;
+			 	}
+			 }
+		}
+	}
+}

@@ -95,7 +95,7 @@ bnsSettings_t::bnsSettings_t(comm_t& _comm):
   newSetting("ALE TEST",
              "BOX",
              "ALE Test Case",
-             {"BOX", "PLUNGINGAIRFOIL"});
+             {"BOX", "PLUNGINGAIRFOIL", "TGV"});
 
   mdsAddSettings(*this, "MDS ");
   parAlmond::AddSettings(*this, "MDS ");

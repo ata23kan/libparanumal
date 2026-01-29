@@ -1,0 +1,129 @@
+[FORMAT]
+2.0
+
+[DATA FILE]
+data/bnsAleTGV3D.h
+
+[ALE TEST]
+TGV
+
+[MESH FILE]
+BOX
+
+[MESH DIMENSION]
+3
+
+[ELEMENT TYPE] # number of edges
+6
+
+[BOX GLOBAL NX]
+4
+
+[BOX GLOBAL NY]
+4
+
+[BOX GLOBAL NZ]
+4
+
+[BOX DIMX]
+6.28318530718
+
+[BOX DIMY]
+6.28318530718
+
+[BOX DIMZ]
+6.28318530718
+
+[BOX BOUNDARY FLAG]
+-1
+
+[POLYNOMIAL DEGREE]
+3
+
+[THREAD MODEL]
+CUDA
+
+[PLATFORM NUMBER]
+0
+
+[DEVICE NUMBER]
+0
+
+[VISCOSITY]
+0.000625
+
+[SPEED OF SOUND]
+10.0
+
+[PML PROFILE ORDER]
+4
+
+[PML SIGMAX MAX]
+50
+
+[PML SIGMAY MAX]
+50
+
+[PML INTEGRATION]
+COLLOCATION
+
+[TIME INTEGRATOR]
+LSERK4
+#SARK4
+
+[START TIME]
+0
+
+[FINAL TIME]
+20
+
+[OUTPUT INTERVAL]
+0.01
+
+[OUTPUT TO FILE]
+TRUE
+
+[OUTPUT FILE NAME]
+bns
+
+
+#################################################
+################## MDS Options ##################
+#################################################
+
+# can be PCG, FPCG, NBPCG, NBFPCG, PGMRES or PMINRES
+[MDS LINEAR SOLVER]
+PCG
+
+# Linear Elasticity does not work with PML
+[MDS DEFORMATION METHOD]
+LAPLACIAN
+#LINEARELASTIC
+
+# can be NONE, PARALMOND (Only for Laplacian deformation)
+[MDS PRECONDITIONER]
+NONE
+#PARALMOND
+
+###########################################
+
+########## ParAlmond Options ##############
+
+# can be KCYCLE, or VCYCLE
+# can add the EXACT and NONSYM option
+[MDS PARALMOND CYCLE]
+VCYCLE
+
+# can be SMOOTHED or UNSMOOTHED
+[MDS PARALMOND AGGREGATION]
+SMOOTHED
+
+# can be DAMPEDJACOBI or CHEBYSHEV
+[MDS PARALMOND SMOOTHER]
+CHEBYSHEV
+
+# can be any integer >0
+[MDS PARALMOND CHEBYSHEV DEGREE]
+2
+
+###########################################
