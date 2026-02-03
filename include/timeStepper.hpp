@@ -104,7 +104,7 @@ public:
     platform(_platform),
     comm(_comm),
     N(Nelements*Np*Nfields),
-    NAle(Nelements*3*2), // -> Hard coded for tris, Nverts=3, Nfields=dim=2 -AA
+    NAle(Nelements*4*3), // -> Hard coded for tris, Nverts=3, Nfields=dim=2 -AA
     Nhalo(NhaloElements*Np*Nfields),
     Npml(NpmlElements*Np*Npmlfields) {}
 
