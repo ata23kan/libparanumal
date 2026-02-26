@@ -34,7 +34,12 @@ void upwind(const dfloat nx,  const dfloat ny,  const dfloat nz, const dfloat c,
             const dfloat q6M, const dfloat q7M, const dfloat q8M, const dfloat q9M, const dfloat q10M,
             const dfloat q1B, const dfloat q2B, const dfloat q3B, const dfloat q4B, const dfloat q5B,
             const dfloat q6B, const dfloat q7B, const dfloat q8B, const dfloat q9B, const dfloat q10B,
+            const dfloat meshVelx, const dfloat meshVely, const dfloat meshVelz,
             dfloat * qflux){
+
+  const dfloat vg = meshVelx*nx + meshVely*ny + meshVelz*nz;
+  // lamM = min(lambda, 0);
+  const dfloat lamM = (vg > 0) ? 0 : vg;
 
   const dfloat dq1  = 0.5f*(q1B  - q1M)  - p_isq12*(nx*(q2B-q2M) + ny*(q3B-q3M) + nz*(q4B-q4M));
   const dfloat dq2  = 0.5f*(q2B  - q2M)  - p_isq12*nx*(q1B-q1M) - p_isq6*nx*(q8B-q8M) - 0.5f*ny*(q5B-q5M) - 0.5f*nz*(q6B-q6M);
@@ -57,6 +62,18 @@ void upwind(const dfloat nx,  const dfloat ny,  const dfloat nz, const dfloat c,
   qflux[7] = c*sqrt(2.0)*(nx*dq2);
   qflux[8] = c*sqrt(2.0)*(ny*dq3);
   qflux[9] = c*sqrt(2.0)*(nz*dq4);
+
+  // Add Ale contribution
+  qflux[0] -= lamM*(q1B - q1M);
+  qflux[1] -= lamM*(q2B - q2M);
+  qflux[2] -= lamM*(q3B - q3M);
+  qflux[3] -= lamM*(q4B - q4M);
+  qflux[4] -= lamM*(q5B - q5M);
+  qflux[5] -= lamM*(q6B - q6M);
+  qflux[6] -= lamM*(q7B - q7M);
+  qflux[7] -= lamM*(q8B - q8M);
+  qflux[8] -= lamM*(q9B - q9M);
+  qflux[9] -= lamM*(q10B - q10M);
 }
 
 
@@ -213,16 +230,18 @@ void LLF(const dfloat nx,  const dfloat ny,  const dfloat nz, const dfloat c,
 
         // compute (q^*)
         dfloat qflux[p_Nfields];
-        // upwind(nx, ny, nz, c,
-        //        q1M, q2M, q3M, q4M, q5M, q6M, q7M, q8M, q9M, q10M,
-        //        q1P, q2P, q3P, q4P, q5P, q6P, q7P, q8P, q9P, q10P,
-        //        qflux);
+        upwind(nx, ny, nz, c,
+               q1M, q2M, q3M, q4M, q5M, q6M, q7M, q8M, q9M, q10M,
+               q1P, q2P, q3P, q4P, q5P, q6P, q7P, q8P, q9P, q10P,
+               meshVelx[idM], meshVely[idM], meshVelz[idM],
+               qflux);
 
-        LLF(nx, ny, nz, c,
-            q1M, q2M, q3M, q4M, q5M, q6M, q7M, q8M, q9M, q10M,
-            q1P, q2P, q3P, q4P, q5P, q6P, q7P, q8P, q9P, q10P,
-            meshVelx[idM], meshVely[idM], meshVelz[idM],
-            qflux);
+        // LLF(nx, ny, nz, c,
+        //     q1M, q2M, q3M, q4M, q5M, q6M, q7M, q8M, q9M, q10M,
+        //     q1P, q2P, q3P, q4P, q5P, q6P, q7P, q8P, q9P, q10P,
+        //     meshVelx[idM], meshVely[idM], meshVelz[idM],
+        //     qflux);
+
 
         // evaluate "flux" terms: (sJ/J)*(A*nx+B*ny+C*nz)*(q^* - q^-)
         const dfloat sc = invJ*sJ;
