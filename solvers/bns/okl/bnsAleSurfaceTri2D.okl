@@ -181,7 +181,8 @@ void LLF(const dfloat nx, const dfloat ny, const dfloat c,
               const dfloat s22M = -c*c*(sqrt(2.0)*q6M - q3M*q3M/q1M);
 
               dfloat rP, uP, vP, s11P, s12P, s22P;
-              bnsBoundaryConditions2D(bc, c, nu, time, x[idM], y[idM], nx, ny,
+              bnsAleBoundaryConditions2D(bc, c, nu, time, x[idM], y[idM], nx, ny,
+                                      meshVelx[idM], meshVely[idM],
                                       rM, uM, vM, s11M, s12M, s22M,
                                       &rP, &uP, &vP, &s11P, &s12P, &s22P);
 
@@ -196,15 +197,15 @@ void LLF(const dfloat nx, const dfloat ny, const dfloat c,
 
             // compute (q^*)
             dfloat qflux[p_Nfields];
-            // upwind(nx, ny, c,
-            //        q1M, q2M, q3M, q4M, q5M, q6M,
-            //        q1P, q2P, q3P, q4P, q5P, q6P,
-            //        qflux);
+            upwind(nx, ny, c,
+                   q1M, q2M, q3M, q4M, q5M, q6M,
+                   q1P, q2P, q3P, q4P, q5P, q6P,
+                   meshVelx[idM], meshVely[idM], qflux);
 
-            LLF(nx, ny, c,
-                q1M, q2M, q3M, q4M, q5M, q6M,
-                q1P, q2P, q3P, q4P, q5P, q6P,
-                meshVelx[idM], meshVely[idM], qflux);
+            // LLF(nx, ny, c,
+            //     q1M, q2M, q3M, q4M, q5M, q6M,
+            //     q1P, q2P, q3P, q4P, q5P, q6P,
+            //     meshVelx[idM], meshVely[idM], qflux);
 
             // evaluate "flux" terms: (sJ/J)*(A*nx+B*ny)*(q^* - q^-)
             const dfloat sc = invJ*sJ;

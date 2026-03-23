@@ -139,11 +139,15 @@ public:
 
   void Report(dfloat time, int tstep);
 
+  void ComputeForces(const dfloat T);
+
   void PlotFields(memory<dfloat>& Q, memory<dfloat>& V, std::string fileName);
 
   void PlotConstantError(memory<dfloat>& Q, dfloat rbar, dfloat Ubar, dfloat Vbar, std::string fileName);
 
   void constantErrorNorm(memory<dfloat>& Q, dfloat rbar, dfloat Ubar, dfloat Vbar);
+
+  void EnergyTGV(memory<dfloat>& Q, std::string fileName, dfloat time);
   
   dfloat MaxWaveSpeed();
 
