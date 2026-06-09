@@ -227,7 +227,7 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   }
 
   // Setup ALE velocity
-  dlong NlocalAle = mesh.NnonPmlElements*mesh.Np;
+  dlong NlocalAle = mesh.Nelements*mesh.Np;
   dlong NhaloAle = mesh.totalHaloPairs*mesh.Np;
 
   // printf("Nelements: %d\n", mesh.Nelements);
