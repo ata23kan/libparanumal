@@ -82,8 +82,8 @@ void bns_t::Run(){
   timeStepper.SetTimeStep(dt);
   // printf("Initial time step: %e\n", timeStepper.GetTimeStep());
 
-  timeStepper.RunWithAle(*this, o_q, o_VX, startTime, finalTime);
-  // timeStepper.RunWithAlePml(*this, o_q, o_VX, o_pmlq, startTime, finalTime);
+  // timeStepper.RunWithAle(*this, o_q, o_VX, startTime, finalTime);
+  timeStepper.RunWithAlePml(*this, o_q, o_VX, o_pmlq, startTime, finalTime);
 
   // output norm of final solution
   {

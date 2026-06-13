@@ -208,10 +208,11 @@ void LLF(const dfloat nx,  const dfloat ny,  const dfloat nz, const dfloat c,
           const dfloat s33M = -c*c*(sqrt(2.0)*q10M - q4M*q4M/q1M);
 
           dfloat rP, uP, vP, wP, s11P, s12P, s13P, s22P, s23P, s33P;
-          bnsBoundaryConditions3D(bc, c, nu, time,
-                                  x[idM], y[idM], z[idM], nx, ny, nz,
-                                   rM,  uM,  vM,  wM,  s11M,  s12M,  s13M,  s22M,  s23M,  s33M,
-                                  &rP, &uP, &vP, &wP, &s11P, &s12P, &s13P, &s22P, &s23P, &s33P);
+
+          bnsAleBoundaryConditions3D(bc, c, nu, time, x[idM], y[idM], z[idM], nx, ny, nz,
+                                    meshVelx[idM], meshVely[idM], meshVelz[idM],
+                                    rM,  uM,  vM,  wM,  s11M,  s12M,  s13M,  s22M,  s23M,  s33M,
+                                    &rP, &uP, &vP, &wP, &s11P, &s12P, &s13P, &s22P, &s23P, &s33P);
 
           //convert back
           q1P = rP;
@@ -289,4 +290,4 @@ void LLF(const dfloat nx,  const dfloat ny,  const dfloat nz, const dfloat c,
       }
     }
   }
-} // And Kernel AleSurfaceTet3D
+} // End Kernel AleSurfaceTet3D

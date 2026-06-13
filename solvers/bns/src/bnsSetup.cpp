@@ -408,6 +408,12 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
     testCase = 4;
     kernelName = "explicitDeformationTGV" + suffix;
     explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  } else if(settings.compareSetting("ALE TEST", "CARANGIFORMFISH")){
+    testCase = 5;
+    kernelName = "explicitDeformationFish" + suffix;
+    explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  } else {
+    LIBP_FORCE_ABORT("Requested ALE TEST not found.");
   }
 
 

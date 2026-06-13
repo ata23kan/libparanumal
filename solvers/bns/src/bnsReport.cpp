@@ -64,6 +64,8 @@ void bns_t::Report(dfloat time, int tstep){
     // Copy the new mesh positions from ALE
     mesh.o_x.copyTo(mesh.x);
     mesh.o_y.copyTo(mesh.y);
+    if(mesh.dim==3)
+      mesh.o_z.copyTo(mesh.z);
 
 
     std::string name;
@@ -84,7 +86,11 @@ void bns_t::Report(dfloat time, int tstep){
 
   }
 
-  o_q.copyTo(q); ComputeForces(time);
+  o_q.copyTo(q); 
+
+  if(testCase==2){
+    ComputeForces(time);
+  }
 
   /*
   if(bns->dim==3){

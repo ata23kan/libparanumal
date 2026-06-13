@@ -28,10 +28,10 @@ SOFTWARE.
 // Deformation in N. Fehn, J. Heinz, W. A. Wall, and M. Kronbichler, 
 // “High-order arbitrary Lagrangian–Eulerian discontinuous Galerkin methods for the 
 // incompressible Navier–Stokes equations,” Journal of Computational Physics, 
-//  vol. 430, p. 110040, Apr. 2021
+// vol. 430, p. 110040, Apr. 2021
 
 #define PI 3.14159265359
-#define L  6.28318530718
+#define L_TGV  6.28318530718
 
 @kernel void explicitDeformationTGVTet3D(const dlong Nelements,
 																				 @restrict const dlong  * elementIds,
@@ -54,9 +54,9 @@ SOFTWARE.
 					const dfloat y0 = VX0[id+1*p_Np];
 					const dfloat z0 = VX0[id+2*p_Np];
 
-					const dfloat sx = sin(2*PI*(x0 + 0.5*L)/L);
-					const dfloat sy = sin(2*PI*(y0 + 0.5*L)/L);
-					const dfloat sz = sin(2*PI*(z0 + 0.5*L)/L);
+					const dfloat sx = sin(2*PI*(x0 + 0.5*L_TGV)/L_TGV);
+					const dfloat sy = sin(2*PI*(y0 + 0.5*L_TGV)/L_TGV);
+					const dfloat sz = sin(2*PI*(z0 + 0.5*L_TGV)/L_TGV);
 
 					// Time factors
 					const dfloat theta = 2*PI*t/TG;
@@ -84,3 +84,87 @@ SOFTWARE.
 		}
 	}
 }
+
+// Deformation in J.-H. Seo, J. Zhou, and R. Mittal, 
+// "Scaling laws for caudal fin swimmers incorporating hydrodynamics, kinematics, morphology and scale effects," 
+// Journal of Fluid Mechanics, vol. 1030, p. A25, Mar. 2026, doi: 10.1017/jfm.2026.11215.
+
+// Axial window parameters (edit to match your fish geometry)
+#define R_RIGID 0.5  // radius of rigid head (non-deforming region)
+#define BETA_DECAY 10.0 // decay rate of deformation in radial direction (0.5 means half the amplitude at r=R_RIGID)
+#define T_RAMP 10.0 // time over which to ramp up the motion
+
+
+@kernel void explicitDeformationFishTet3D(const dlong Nelements,
+                                          @restrict const dlong  * elementIds,
+                                          const dfloat   t,
+                                          const dfloat   a0,
+                                          const dfloat   a1,
+                                          const dfloat   a2,
+                                          const dfloat   r1,
+                                          const dfloat   r2,
+                                          const dfloat   inv_dr,
+                                          const dfloat   omega,
+                                          const dfloat   k,
+                                          @restrict const dfloat * VX0,
+                                          @restrict       dfloat * rhsX,
+                                          @restrict       dfloat * VX){
+
+  for(dlong eo=0; eo<Nelements; eo+=p_NblockV; @outer(0)){
+    for(int es=0; es<p_NblockV; ++es; @inner(1)){
+      for(int n=0; n<p_Np; ++n; @inner(0)){
+        const dlong et = eo + es;
+        if(et < Nelements){
+          const dlong e  = elementIds[et];
+          const dlong id = n + e*p_Np*3;
+
+          const dfloat x0 = VX0[id + 0*p_Np];
+          const dfloat y0 = VX0[id + 1*p_Np];
+          const dfloat z0 = VX0[id + 2*p_Np];
+
+          // Distance to body surrogate surface (tube with varying radius)
+          dfloat xAmp = x0;
+          if(xAmp < 0.0) xAmp = 0.0;
+          if(xAmp > 1.0) xAmp = 1.0;
+
+          // Compute effective distance to the body
+          dfloat dx = x0 - xAmp;
+          dfloat dist = sqrt(dx*dx + y0*y0 + z0*z0);
+          dfloat d_eff = dist - R_RIGID;
+          if (d_eff < 0.0) d_eff = 0.0;
+
+          // Compute exponential decay factor based on effective distance
+          dfloat blend = exp(-BETA_DECAY * (d_eff*d_eff));
+
+          // Adjust the ramp function
+          dfloat ramp = 1.0;
+          dfloat ramp_dot = 0.0;
+          if (t < T_RAMP) {
+            dfloat arg = PI * t / T_RAMP;
+            ramp = 0.5 * (1.0 - cos(arg)); // Smooth ramp from 0 to 1
+            ramp_dot = 0.5 * (PI / T_RAMP) * sin(arg); // Time derivative of the ramp
+          }
+
+          // Evaluate the amplitude and phase of the wave at this axial location
+          dfloat A_x = a0 + a1*xAmp + a2*(xAmp*xAmp);
+          dfloat phase = k*x0 - omega*t;
+          dfloat z_disp = A_x * sin(phase) * blend; // Apply radial decay to the wave amplitude
+          dfloat z_vel = -A_x * omega * cos(phase) * blend;
+
+          dfloat h_xt = z_disp * ramp; 
+          dfloat dhdt = z_vel * ramp + z_disp * ramp_dot;
+          
+          const dfloat amp = a0 + a1*xAmp + a2*(xAmp*xAmp);
+
+          VX[id + 0*p_Np] = x0;
+          VX[id + 1*p_Np] = y0;
+          VX[id + 2*p_Np] = z0 + h_xt;
+
+          rhsX[id + 0*p_Np] = 0.0;
+          rhsX[id + 1*p_Np] = 0.0;
+          rhsX[id + 2*p_Np] = dhdt;
+        }
+      }
+    }
+  }
+}		// End kernel explicitDeformationFishTet3D
