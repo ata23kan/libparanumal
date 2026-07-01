@@ -2,19 +2,13 @@
 2.0
 
 [DATA FILE]
-data/bnsAleFlexibleRod2D.h
-#data/bnsAle2D.h
+data/bnsAle2D.h
 
 [ALE TEST]
 PLUNGINGAIRFOIL
-#SOLVEMESH
-#BOX
 
 [MESH FILE]
-mesh/flexible_rod_pml.msh
 #mesh/naca0012.msh
-#PMLBOX
-#BOX
 
 [MESH DIMENSION]
 2
@@ -105,8 +99,7 @@ LAPLACIAN
 
 # can be NONE, PARALMOND (Only for Laplacian deformation)
 [MDS PRECONDITIONER]
-#NONE
-PARALMOND
+NONE
 
 ###########################################
 

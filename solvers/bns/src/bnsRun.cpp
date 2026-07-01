@@ -48,7 +48,7 @@ void bns_t::Run(){
                         o_VX);
 
   // Hold the initial positions for explicit deformation
-  o_VX0.copyFrom(o_VX, meshN1.Np*meshN1.Nelements*2, 0, properties_t("async", true));
+  o_VX0.copyFrom(o_VX, meshN1.Np*meshN1.Nelements*mesh.dim, 0, properties_t("async", true));
 
   if (mesh.NpmlElements)
     pmlInitialConditionKernel(mesh.NpmlElements,
@@ -79,7 +79,7 @@ void bns_t::Run(){
       settings.compareSetting("TIME INTEGRATOR","MRSAAB3"))
     dt /= (1<<(mesh.mrNlevels-1));
 #endif
-  timeStepper.SetTimeStep(dt*0.05);
+  timeStepper.SetTimeStep(dt);
   // printf("Initial time step: %e\n", timeStepper.GetTimeStep());
 
   // timeStepper.RunWithAle(*this, o_q, o_VX, startTime, finalTime);

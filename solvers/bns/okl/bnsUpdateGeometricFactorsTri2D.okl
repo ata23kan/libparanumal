@@ -155,9 +155,9 @@ SOFTWARE.
 		sgeo[base+p_SJID] = d3/2.;
 		sgeo[base+p_IJID] = 1./J;
 
-		N1sgeo[base+p_NXID] = nx2/d2;
-		N1sgeo[base+p_NYID] = ny2/d2;
-		N1sgeo[base+p_SJID] = d2/2.;
+		N1sgeo[base+p_NXID] = nx3/d3;
+		N1sgeo[base+p_NYID] = ny3/d3;
+		N1sgeo[base+p_SJID] = d3/2.;
 		N1sgeo[base+p_IJID] = 1./J;
 
 	}

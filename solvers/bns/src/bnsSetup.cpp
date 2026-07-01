@@ -186,7 +186,11 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   properties_t kernelInfoN1 = meshN1.props;
 
   // Build interpolation matrix to high order mesh
-  mesh.DegreeRaiseMatrixTri2D(meshN1.N, mesh.N, IM);
+  if(mesh.dim==2){
+    mesh.DegreeRaiseMatrixTri2D(meshN1.N, mesh.N, IM);
+  } else if(mesh.dim==3){
+    mesh.DegreeRaiseMatrixTet3D(meshN1.N, mesh.N, IM);
+  }
   o_IM = platform.malloc<dfloat>(IM);
 
   mdsSettings = _settings.extractMdsSettings();
@@ -239,8 +243,13 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   o_meshVelx = platform.malloc<dfloat>(meshVelx);
   o_meshVely = platform.malloc<dfloat>(meshVely);
 
-  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*2);
-  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*2);
+  if(mesh.dim==3){
+    meshVelz.calloc(NlocalAle+NhaloAle);
+    o_meshVelz = platform.malloc<dfloat>(meshVelz);
+  }  
+
+  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mesh.dim);
+  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mesh.dim);
 
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
@@ -356,6 +365,13 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   vorticityKernel = platform.buildKernel(fileName, kernelName,
                                      kernelInfo);
 
+  // Q-Criterion calculation
+  fileName   = oklFilePrefix + "bnsQCriterion" + suffix + oklFileSuffix;
+  kernelName = "bnsQCriterion" + suffix;
+
+  qcriterionKernel = platform.buildKernel(fileName, kernelName,
+                                     kernelInfo);                                     
+
   if (mesh.dim==2) {
     fileName   = oklFilePrefix + "bnsInitialCondition2D" + oklFileSuffix;
     initialConditionKernel = platform.buildKernel(fileName,
@@ -377,6 +393,10 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
     pmlInitialConditionKernel = platform.buildKernel(fileName,
                                                   "bnsPmlInitialCondition3D",
                                                   kernelInfo);
+
+    // ALE Initial Position
+    kernelName = "bnsInitialPosition3D";
+    initialPositionKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
   }
 
   // ALE Kernels
@@ -391,6 +411,16 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
     explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);    
   } else if(settings.compareSetting("ALE TEST", "SOLVEMESH")){
     testCase = 3;
+  } else if(settings.compareSetting("ALE TEST", "TGV")){
+    testCase = 4;
+    kernelName = "explicitDeformationTGV" + suffix;
+    explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  } else if(settings.compareSetting("ALE TEST", "CARANGIFORMFISH")){
+    testCase = 5;
+    kernelName = "explicitDeformationFish" + suffix;
+    explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  } else {
+    LIBP_FORCE_ABORT("Requested ALE TEST not found.");
   }
 
 
@@ -416,16 +446,16 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   kernelName = "bnsAleVolume" + suffix;
   aleVolumeKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
-  fileName   = oklFilePrefix + "bnsAleRhs" + suffix + oklFileSuffix;
-  if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
-    kernelName = "aleRhsLinElastic" + suffix;
-    aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
-    kernelName = "aleBCLinElastic" + suffix;
-    aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
-  }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-    kernelName = "aleRhsLaplace" + suffix;
-    aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
-    kernelName = "aleBCLaplace" + suffix;
-    aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
-  }
+  // fileName   = oklFilePrefix + "bnsAleRhs" + suffix + oklFileSuffix;
+  // if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+  //   kernelName = "aleRhsLinElastic" + suffix;
+  //   aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  //   kernelName = "aleBCLinElastic" + suffix;
+  //   aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  // }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+  //   kernelName = "aleRhsLaplace" + suffix;
+  //   aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  //   kernelName = "aleBCLaplace" + suffix;
+  //   aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  // }
 }

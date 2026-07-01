@@ -33,7 +33,7 @@ SOFTWARE.
                                @restrict const  dfloat * z,
                                @restrict const  dfloat * meshVelx,
                                @restrict const  dfloat * meshVely,
-                               // @restrict const  dfloat * meshVelz,
+                               @restrict const  dfloat * meshVelz,
                                const dfloat t,
                                const dfloat c,
                                const dfloat nu,
