@@ -2,13 +2,13 @@
 2.0
 
 [DATA FILE]
-data/bnsAle2D.h
+data/bnsAleConstant2D.h
 
 [ALE TEST]
-PLUNGINGAIRFOIL
+BOX
 
 [MESH FILE]
-#mesh/naca0012.msh
+BOX
 
 [MESH DIMENSION]
 2
@@ -17,10 +17,10 @@ PLUNGINGAIRFOIL
 3
 
 [BOX NX]
-40
+10
 
 [BOX NY]
-40
+10
 
 [BOX NZ]
 20
@@ -32,7 +32,7 @@ PLUNGINGAIRFOIL
 20
 
 [BOX BOUNDARY FLAG]
-1
+-1
 
 [POLYNOMIAL DEGREE]
 3
@@ -50,7 +50,7 @@ CUDA
 0.001
 
 [SPEED OF SOUND]
-1.0
+14.0
 
 [PML PROFILE ORDER]
 4
@@ -62,7 +62,7 @@ CUDA
 50
 
 [PML INTEGRATION]
-COLLOCATION
+CUBATURE
 
 [TIME INTEGRATOR]
 #LSERK4
@@ -72,7 +72,7 @@ SARK4
 0
 
 [FINAL TIME]
-100
+10
 
 [OUTPUT INTERVAL]
 1
@@ -100,6 +100,7 @@ LAPLACIAN
 # can be NONE, PARALMOND (Only for Laplacian deformation)
 [MDS PRECONDITIONER]
 NONE
+#PARALMOND
 
 ###########################################
 

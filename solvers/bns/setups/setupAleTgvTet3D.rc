@@ -2,37 +2,40 @@
 2.0
 
 [DATA FILE]
-data/bnsAle2D.h
+data/bnsAleTGV3D.h
 
 [ALE TEST]
-PLUNGINGAIRFOIL
+TGV
 
 [MESH FILE]
-#mesh/naca0012.msh
+BOX
 
 [MESH DIMENSION]
-2
-
-[ELEMENT TYPE] # number of edges
 3
 
+[ELEMENT TYPE] # number of edges
+6
+
 [BOX NX]
-40
+24
 
 [BOX NY]
-40
+24
 
 [BOX NZ]
-20
+24
 
 [BOX DIMX]
-20
+6.28318530718
 
 [BOX DIMY]
-20
+6.28318530718
+
+[BOX DIMZ]
+6.28318530718
 
 [BOX BOUNDARY FLAG]
-1
+-1
 
 [POLYNOMIAL DEGREE]
 3
@@ -47,10 +50,10 @@ CUDA
 0
 
 [VISCOSITY]
-0.001
+0.000625
 
 [SPEED OF SOUND]
-1.0
+10.0
 
 [PML PROFILE ORDER]
 4
@@ -64,6 +67,9 @@ CUDA
 [PML INTEGRATION]
 COLLOCATION
 
+[CFL NUMBER]
+0.7
+
 [TIME INTEGRATOR]
 #LSERK4
 SARK4
@@ -72,10 +78,10 @@ SARK4
 0
 
 [FINAL TIME]
-100
+20
 
 [OUTPUT INTERVAL]
-1
+0.01
 
 [OUTPUT TO FILE]
 TRUE
@@ -100,6 +106,7 @@ LAPLACIAN
 # can be NONE, PARALMOND (Only for Laplacian deformation)
 [MDS PRECONDITIONER]
 NONE
+#PARALMOND
 
 ###########################################
 

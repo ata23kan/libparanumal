@@ -164,22 +164,33 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   traceHalo = mesh.HaloTraceSetup(Nfields);
 
   // Setup mesh deformation solver
-  // bc = 1 -> walls
-  // bc = 2 -> outflow
-  // bc = 3 -> wallm
-  int NBCTypes = 4;
+  // bc = 1 -> moving airfoil 
+  // bc = 2 -> stationary boundary
+  // wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5, physical bounding box 6
+  int NBCTypes = 11;
   memory<int> mdsBCType(NBCTypes);
   mdsBCType[0] = 0;
   mdsBCType[1] = 1;
-  mdsBCType[2] = 1;
-  mdsBCType[3] = 2;
+  mdsBCType[2] = 2;
+  mdsBCType[3] = 3;
+  mdsBCType[4] = 2;
+  mdsBCType[5] = 2;
+  mdsBCType[6] = 6;
+  mdsBCType[7] = 2;
+  mdsBCType[8] = 2;
+  mdsBCType[9] = 2;
+  mdsBCType[10] = 2;
 
   // Build low order mesh for deformation
   meshN1 = mesh.SetupNewDegree(1);
   properties_t kernelInfoN1 = meshN1.props;
 
   // Build interpolation matrix to high order mesh
-  mesh.DegreeRaiseMatrixTri2D(meshN1.N, mesh.N, IM);
+  if(mesh.dim==2){
+    mesh.DegreeRaiseMatrixTri2D(meshN1.N, mesh.N, IM);
+  } else if(mesh.dim==3){
+    mesh.DegreeRaiseMatrixTet3D(meshN1.N, mesh.N, IM);
+  }
   o_IM = platform.malloc<dfloat>(IM);
 
   mdsSettings = _settings.extractMdsSettings();
@@ -216,7 +227,7 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   }
 
   // Setup ALE velocity
-  dlong NlocalAle = mesh.NnonPmlElements*mesh.Np;
+  dlong NlocalAle = mesh.Nelements*mesh.Np;
   dlong NhaloAle = mesh.totalHaloPairs*mesh.Np;
 
   // printf("Nelements: %d\n", mesh.Nelements);
@@ -232,8 +243,13 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   o_meshVelx = platform.malloc<dfloat>(meshVelx);
   o_meshVely = platform.malloc<dfloat>(meshVely);
 
-  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
-  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mdsNfields);
+  if(mesh.dim==3){
+    meshVelz.calloc(NlocalAle+NhaloAle);
+    o_meshVelz = platform.malloc<dfloat>(meshVelz);
+  }  
+
+  o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mesh.dim);
+  o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mesh.dim);
 
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
@@ -251,6 +267,7 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   std::string dataFileName;
   settings.getSetting("DATA FILE", dataFileName);
   kernelInfo["includes"] += dataFileName;
+  kernelInfoN1["includes"] += dataFileName;
 
   // ALE First order mesh properties
   kernelInfo["defines/" "p_NpN1"] = meshN1.Np;
@@ -261,6 +278,9 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   int maxNodes = std::max(mesh.Np, (mesh.Nfp*mesh.Nfaces));
   kernelInfo["defines/" "p_maxNodes"]= maxNodes;
+
+  int Nmax = std::max(meshN1.Np, meshN1.Nfaces*meshN1.Nfp);
+  kernelInfoN1["defines/" "p_Nmax"]= Nmax;
 
   int blockMax = 256;
   if (platform.device.mode()=="CUDA") blockMax = 512;
@@ -345,6 +365,13 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   vorticityKernel = platform.buildKernel(fileName, kernelName,
                                      kernelInfo);
 
+  // Q-Criterion calculation
+  fileName   = oklFilePrefix + "bnsQCriterion" + suffix + oklFileSuffix;
+  kernelName = "bnsQCriterion" + suffix;
+
+  qcriterionKernel = platform.buildKernel(fileName, kernelName,
+                                     kernelInfo);                                     
+
   if (mesh.dim==2) {
     fileName   = oklFilePrefix + "bnsInitialCondition2D" + oklFileSuffix;
     initialConditionKernel = platform.buildKernel(fileName,
@@ -366,6 +393,10 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
     pmlInitialConditionKernel = platform.buildKernel(fileName,
                                                   "bnsPmlInitialCondition3D",
                                                   kernelInfo);
+
+    // ALE Initial Position
+    kernelName = "bnsInitialPosition3D";
+    initialPositionKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
   }
 
   // ALE Kernels
@@ -380,6 +411,16 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
     explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);    
   } else if(settings.compareSetting("ALE TEST", "SOLVEMESH")){
     testCase = 3;
+  } else if(settings.compareSetting("ALE TEST", "TGV")){
+    testCase = 4;
+    kernelName = "explicitDeformationTGV" + suffix;
+    explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  } else if(settings.compareSetting("ALE TEST", "CARANGIFORMFISH")){
+    testCase = 5;
+    kernelName = "explicitDeformationFish" + suffix;
+    explicitDeformationKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  } else {
+    LIBP_FORCE_ABORT("Requested ALE TEST not found.");
   }
 
 
@@ -405,14 +446,16 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   kernelName = "bnsAleVolume" + suffix;
   aleVolumeKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
-  fileName   = oklFilePrefix + "bnsAleRhs" + suffix + oklFileSuffix;
-  if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
-    kernelName = "aleRhsLinElastic" + suffix;
-    // aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
-  }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
-
-    kernelName = "aleRhsLaplace" + suffix;
-    // aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
-  }
-
+  // fileName   = oklFilePrefix + "bnsAleRhs" + suffix + oklFileSuffix;
+  // if (mdsSettings.compareSetting("DEFORMATION METHOD", "LINEARELASTIC")){
+  //   kernelName = "aleRhsLinElastic" + suffix;
+  //   aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  //   kernelName = "aleBCLinElastic" + suffix;
+  //   aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  // }else if(mdsSettings.compareSetting("DEFORMATION METHOD", "LAPLACIAN")){
+  //   kernelName = "aleRhsLaplace" + suffix;
+  //   aleRhsKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  //   kernelName = "aleBCLaplace" + suffix;
+  //   aleBCKernel = platform.buildKernel(fileName, kernelName, kernelInfoN1);
+  // }
 }

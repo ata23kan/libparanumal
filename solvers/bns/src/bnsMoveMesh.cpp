@@ -33,14 +33,15 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
   default:
   case 1:{
+    // printf("MoveMesh: BOX\n");
     const dlong nx = 1;
     const dlong ny = 1;
     const dlong nt = 1;
     const dlong Lx = 20;  // BOX DIMX
     const dlong Ly = 20;  // BOX DIMY
-    const dfloat t0 = sqrt(50);
-    const dfloat Ax = 0.5;
-    const dfloat Ay = 0.5;
+    const dfloat t0 = sqrt(200);
+    const dfloat Ax = 0.95;
+    const dfloat Ay = 0.95;
 
     const dfloat omega = 2 * PI * nt / t0;
     // const dfloat S     = sin(omega * T);
@@ -59,15 +60,24 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                               o_VX0,
                               o_rhsX,
                               o_Vx);
+
+    break;
   } // end case 1 (BOX)
 
   case 2:{
+    printf("MoveMesh: PLUNGING AIRFOIL\n");
     // Plunging airfoil
+    const dfloat u_inf = 0.1;
     const dfloat xc = 0.5, yc = 0.0;;
-    const dfloat r1 = 0.20, r2 = 4.0;
-    const dfloat H0 = 0.2; // Plunging amplitude
-    const dfloat f  = 0.01;  // Plunging frequency
-    const dfloat omega = 2*PI*f;
+    const dfloat r1 = 1.00, r2 = 4.7;
+
+    // // Slow Plunge
+    const dfloat H0 = 0.08;  // Plunging amplitude
+    const dfloat Sr = 0.46;  // Strouhal number
+
+    const dfloat omega = u_inf*Sr/H0;
+    // const dfloat f  = 0.01;  // Plunging frequency
+    // const dfloat omega = 2*PI*f;
     const dfloat ex = 0.0, ey = 1.0; // Plunging directions
 
     const dfloat inv_dr = 1.0 / (r2 - r1);
@@ -91,64 +101,154 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                               o_rhsX,
                               o_Vx);
 
+    break;
 
   } // end case 2 (PLUNGINGAIRFOIL)
 
-  // case 3:{
+  case 3:{
+    // printf("MoveMesh: SOLVE MESH\n");
+    // AA: This may only solve for nonPml elements
+    dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
 
-  //   dlong Ntotal = (meshN1.Nelements+meshN1.totalHaloPairs)*meshN1.Np*mdsNfields;
+    // Create the solution and rhs vectors in every direction
+    deviceMemory<dfloat> o_rhsVx = platform.reserve<dfloat>(Ntotal);
+    deviceMemory<dfloat> o_vxL   = platform.reserve<dfloat>(Ntotal);
+    deviceMemory<dfloat> o_rhsVy, o_vyL;
 
-  //   deviceMemory<dfloat> o_rhsV = platform.reserve<dfloat>(Ntotal);
-  //   deviceMemory<dfloat> o_vL   = platform.reserve<dfloat>(Ntotal);
+    // set solution vector to zero
+    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsVx);
+    platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_vxL);
 
-  //   // set x to zero
-  //   platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_vL);
-  //   platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsV);
+    // Create gather arrays
+    deviceMemory<dfloat> o_GrhsVx = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    deviceMemory<dfloat> o_Gvx    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    deviceMemory<dfloat> o_GrhsVy, o_Gvy;
 
-  //   aleRhsKernel(mesh.Nelements,
-  //                meshN1.o_wJ,
-  //                meshN1.o_ggeo,
-  //                meshN1.o_vgeo,
-  //                meshN1.o_S,
-  //                meshN1.o_Se,
-  //                meshN1.o_vmapM,
-  //                mdsLambda,
-  //                mdsMu,
-  //                T,
-  //                meshN1.o_x,
-  //                meshN1.o_y,
-  //                meshN1.o_z,
-  //                mdsSolver.o_mapB,
-  //                o_rhsV);
+    if(mdsSolver.deform_laplace){
+      o_rhsVy = platform.reserve<dfloat>(Ntotal);
+      o_vyL   = platform.reserve<dfloat>(Ntotal);
+      platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_rhsVy);
+      platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_vyL);
 
-  //   int maxIter = 5000;
-  //   int verbose = 0;
+      o_GrhsVy = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+      o_Gvy    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    }
 
-  //   // Create gather arrays
-  //   deviceMemory<dfloat> o_GrhsV = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-  //   deviceMemory<dfloat> o_Gv    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+    aleRhsKernel(mesh.Nelements,
+                 meshN1.o_wJ,
+                 meshN1.o_ggeo,
+                 meshN1.o_vgeo,
+                 meshN1.o_S,
+                 meshN1.o_Se,
+                 meshN1.o_vmapM,
+                 mdsLambda,
+                 mdsMu,
+                 T,
+                 meshN1.o_x,
+                 meshN1.o_y,
+                 meshN1.o_z,
+                 mdsSolver.o_mapB,
+                 o_rhsVx,
+                 o_rhsVy);
 
-  //   // Gather - Solve - Scatter
-  //   mdsSolver.ogsMasked.Gather(o_GrhsV, o_rhsV, mdsNfields, ogs::Add, ogs::Trans);
-  //   mdsSolver.ogsMasked.Gather(o_Gv, o_vL, mdsNfields, ogs::Add, ogs::NoTrans);
-  //   Niter = mdsSolver.Solve(mdsLinearSolver, o_Gv, o_GrhsV, mdsTOL, maxIter, verbose);
-  //   printf("Total Number of Iterations: %d\n", Niter);
-  //   mdsSolver.ogsMasked.Scatter(o_vL, o_Gv, mdsNfields, ogs::NoTrans);
-  //   o_GrhsV.free(); o_Gv.free();
+    int maxIter = 5000;
+    int verbose = 0;
 
-  //   aleBCKernel(meshN1.Nelements,
-  //               meshN1.o_x,
-  //               meshN1.o_y,
-  //               meshN1.o_z,
-  //               T,
-  //               mdsSolver.o_mapB,
-  //               o_rhsX,
-  //               o_vL); 
 
-  // } // end case 3 (Solve Mesh)
+    // Gather - Solve - Scatter
+    mdsSolver.ogsMasked.Gather(o_GrhsVx, o_rhsVx, mdsNfields, ogs::Add, ogs::Trans);
+    mdsSolver.ogsMasked.Gather(o_Gvx, o_vxL, mdsNfields, ogs::Add, ogs::NoTrans);
 
-  }
+    if(mdsSolver.deform_laplace){
+
+      mdsSolver.ogsMasked.Gather(o_GrhsVy, o_rhsVy, 1, ogs::Add, ogs::Trans);
+      mdsSolver.ogsMasked.Gather(o_Gvy, o_vyL, 1, ogs::Add, ogs::NoTrans);
+
+      int Nitery;
+      Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
+      // printf("Total Number of Iterations in x: %d\n", Niter);
+      // printf("Total Number of Iterations in y: %d\n", Nitery);
+
+      mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, 1, ogs::NoTrans);
+      mdsSolver.ogsMasked.Scatter(o_vyL, o_Gvy, 1, ogs::NoTrans);
+      o_GrhsVx.free(); o_Gvx.free();
+      o_GrhsVy.free(); o_Gvy.free();
+
+    } else if(mdsSolver.deform_linElastic){
+      Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      // printf("Total Number of Iterations: %d\n", Niter);
+      mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, mdsNfields, ogs::NoTrans);
+      o_GrhsVx.free(); o_Gvx.free();      
+    }
+
+    aleBCKernel(meshN1.Nelements,
+                meshN1.o_x,
+                meshN1.o_y,
+                meshN1.o_z,
+                T,
+                mdsSolver.o_mapB,
+                o_rhsX,
+                o_vxL, 
+                o_vyL); 
+
+    break;
+
+  } // end case 3 (Solve Mesh)
+
+  case 4:{ 
+    // printf("MoveMesh: 3D TGV\n");
+    // Explicit deformation for 3D TGV
+    const dfloat A  = 3.141592654359/6.;
+    const dfloat TG = 20;
+    explicitDeformationKernel(mesh.NnonPmlElements,
+                              mesh.o_nonPmlElements,
+                              T,
+                              A,
+                              TG,
+                              o_VX0,
+                              o_rhsX,
+                              o_Vx);
+
+    break;
+  } // end case 4 (3D TGV)
+
+  case 5: {
+    // printf("MoveMesh: CARANGIFORM FISH\n");
+    // Explicit deformation of the carangiform fish
+    const dfloat r1 = 0.20, r2 = 0.80;
+    const dfloat inv_dr = 1.0 / (r2 - r1);
+    const dfloat U_inf = 0.1; // swimming speed
+
+    const dfloat a0 = 0.02, a1 = -0.08, a2 = 0.16;
+    const dfloat k = 2*PI; // Wave number
+    const dfloat Af = 0.2; // Peak to peak tailbeat amplitude 0.2/L
+    const dfloat St = 0.91; // Strouhal number
+    const dfloat f = St * U_inf / Af; // tailbeat frequency
+    const dfloat omega = 2.0*PI*f;
+
+    // Explicit deformation
+    explicitDeformationKernel(mesh.NnonPmlElements,
+                              mesh.o_nonPmlElements,
+                              T,
+                              a0,
+                              a1,
+                              a2,
+                              r1,
+                              r2,
+                              inv_dr,
+                              omega,
+                              k,
+                              o_VX0,
+                              o_rhsX,
+                              o_Vx);
+    break;
+  } // end case 5 (carangiform fish)
+}
+
+  // }
   // Interpolate vertex velocities to the computational nodes
+
   velInterpolationKernel(mesh.NnonPmlElements,
                          mesh.o_nonPmlElements,
                          o_IM,
@@ -157,5 +257,6 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                          mesh.o_y,
                          mesh.o_z,
                          o_meshVelx,
-                         o_meshVely);  
+                         o_meshVely,  
+                         o_meshVelz);  
 }

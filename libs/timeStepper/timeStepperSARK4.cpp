@@ -392,6 +392,9 @@ void sark4::RunWithAle(solver_t& solver,
     // compute Dopri estimator
     dfloat err = Estimater(o_q, o_rkq, o_rkerr);
 
+    // dfloat err = 1e-5;  // Remove the adaptive stepping
+    // dfloat dtnew = dt;
+
     // build controller
     dfloat fac1 = pow(err,exp1);
     dfloat fac = fac1/pow(facold,beta);
@@ -466,6 +469,7 @@ void sark4::RunWithAle(solver_t& solver,
       tstep++;
     } else {
       dtnew = dt/(std::max(invfactor1,fac1/safe));
+      solver.UpdateGeo(o_VX);   // Return the geometric factors to the beginning of the step.
     }
     dt = dtnew;
 
@@ -501,29 +505,28 @@ void sark4::ALEStep(solver_t& solver,
     // t_rk = t + C_rk*_dt
     dfloat currentTime = time + rkC[rk]*_dt;
 
-    // Compute the RK stage for mesh movement
-    rkPmlStageKernel(NAle,
-                     rk,
-                     _dt,
-                     o_pmlrkA,
-                     o_VX,
-                     o_rkrhsX,
-                     o_rkVX);
-
+    // // Compute the RK stage for mesh movement
+    // rkPmlStageKernel(NAle,
+    //                  rk,
+    //                  _dt,
+    //                  o_pmlrkA,
+    //                  o_VX,
+    //                  o_rkrhsX,
+    //                  o_rkVX);
 
 
     // solve the mesh velocities rhs = v_M
     solver.MoveMesh(o_rkVX, o_rhsX, currentTime);
 
-    // Update the positions using SARK coefficients
-    rkPmlUpdateKernel(NAle,
-                      rk,
-                      _dt,
-                      o_pmlrkA,
-                      o_VX,
-                      o_rhsX,
-                      o_rkrhsX,
-                      o_rkVX);
+    // // Update the positions using SARK coefficients
+    // rkPmlUpdateKernel(NAle,
+    //                   rk,
+    //                   _dt,
+    //                   o_pmlrkA,
+    //                   o_VX,
+    //                   o_rhsX,
+    //                   o_rkrhsX,
+    //                   o_rkVX);
 
     // Update the geometric factors in the stage
     solver.UpdateGeo(o_rkVX);

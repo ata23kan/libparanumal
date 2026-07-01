@@ -47,15 +47,15 @@ SOFTWARE.
 			 	const dlong et = eo+es; // element in block
 			 	if(et<Nelements){
 			 		const dlong e = elementIds[et];
-					const dlong id = n + e*p_Np*p_Nfields;
+					const dlong id = n + e*p_Np*2;
 					const dfloat x_0 = VX0[id+0*p_Np];
 					const dfloat y_0 = VX0[id+1*p_Np];
 					const dfloat Sx = sin(kx*x_0);
 					const dfloat Sy = sin(ky*y_0);
 					const dfloat S  = sin(omega*t);
 
-					// VX[id+0*p_Np] = x_0 + Ax*S*Sx*Sy; 
-					// VX[id+1*p_Np] = y_0 + Ay*S*Sx*Sy; 
+					VX[id+0*p_Np] = x_0 + Ax*S*Sx*Sy; 
+					VX[id+1*p_Np] = y_0 + Ay*S*Sx*Sy; 
 
 					rhsX[id+0*p_Np] = Ax*omega*cos(omega*t)*Sx*Sy;
 					rhsX[id+1*p_Np] = Ay*omega*cos(omega*t)*Sx*Sy;
@@ -89,7 +89,7 @@ SOFTWARE.
 			 	const dlong et = eo+es; // element in block
 			 	if(et<Nelements){
 			 		const dlong e = elementIds[et];
-					const dlong id = n + e*p_Np*p_Nfields;
+					const dlong id = n + e*p_Np*2;
 					const dfloat x_0 = VX0[id+0*p_Np];
 					const dfloat y_0 = VX0[id+1*p_Np];
 
@@ -109,11 +109,11 @@ SOFTWARE.
 						beta = 1.0 - 10.0*s3 + 15.0*s4 - 6.0*s5;
 					}
 
-					VX[id+0*p_Np] = x_0 + h*beta*ex; 
-					VX[id+1*p_Np] = y_0 + h*beta*ey; 
+					VX[id+0*p_Np] = x_0 - h*beta*ex; 
+					VX[id+1*p_Np] = y_0 - h*beta*ey; 
 
-					rhsX[id+0*p_Np] = beta * dhdt * ex;
-					rhsX[id+1*p_Np] = beta * dhdt * ey;
+					rhsX[id+0*p_Np] = - beta * dhdt * ex;
+					rhsX[id+1*p_Np] = - beta * dhdt * ey;
 			 	}
 			 }
 		}

@@ -38,7 +38,8 @@ SOFTWARE.
                         @restrict const  dfloat *  y,
                         @restrict const  dfloat *  z,
                         @restrict const  int    *  mapB,
-                        @restrict dfloat        *  rhs){
+                        @restrict dfloat        *  rhsx,
+                        @restrict dfloat        *  rhsy){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
 
@@ -113,21 +114,21 @@ SOFTWARE.
 
         const int id = n*p_Nfields + e*p_Np*p_Nfields;
 
-        dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
-        dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
-        dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
-        dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
+        const dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
+        const dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
+        const dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
+        const dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
 
         // ddx((lambda+2mu)dudx + lambda*dvdy) + ddy(mu*dudy + mu*dvdx)
-        rhs[id+0] -= J * ((lambda+2*mu)*ddx_dudx +mu*ddy_dudy + lambda*ddx_dvdy + mu*ddy_dvdx);
+        rhsx[id+0] -= J * ((lambda+2*mu)*ddx_dudx +mu*ddy_dudy + lambda*ddx_dvdy + mu*ddy_dvdx);
 
-        dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
-        dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
-        dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
-        dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
+        const dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
+        const dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
+        const dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
+        const dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
 
         // ddx(mu*dudy+mu*dvdx) + ddy((lambda+2mu)dvdy+lambda*dudx)
-        rhs[id+1] -= J * (mu*ddx_dudy + mu * ddx_dvdx + (lambda+2*mu)*ddy_dvdy + lambda*ddy_dudx);
+        rhsx[id+1] -= J * (mu*ddx_dudy + mu * ddx_dvdx + (lambda+2*mu)*ddy_dvdy + lambda*ddy_dudx);
     
       }
     }
@@ -149,19 +150,19 @@ SOFTWARE.
                         @restrict const  dfloat *  y,
                         @restrict const  dfloat *  z,
                         @restrict const  int    *  mapB,
-                        @restrict dfloat        *  rhs){
+                        @restrict dfloat        *  rhsx,
+                        @restrict dfloat        *  rhsy){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
-    // @shared dfloat s_qu[p_Np];
-    // @shared dfloat s_qv[p_Np];
-    @shared dfloat s_q[p_Nfields][p_Np];
+    @shared dfloat s_qx[p_Np];
+    @shared dfloat s_qy[p_Np];
+    // @shared dfloat s_q[p_Nfields][p_Np];
     // @shared dfloat s_ndq[p_Nfp*p_Nfaces];
 
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_Np){
-        for(int fld=0; fld<p_Nfields; fld++){
-        s_q[fld][n] = 0.;
-        }
+        s_qx[n] = 0.;
+        s_qy[n] = 0.;
       }
     }
 
@@ -172,15 +173,15 @@ SOFTWARE.
         const int idM = vmapM[id];
         const int nid = idM%p_Np;
 
-        dfloat mxP=0, myP=0;
+        dfloat mxP=0., myP=0.;
 
         const int bc = mapB[idM];
         if(bc>0) {
           bnsMeshBoundary2D(bc, t, x[idM], y[idM], 
                                   &mxP, &myP);
         }
-        s_q[0][nid] = mxP;
-        s_q[1][nid] = myP;
+        s_qx[nid] = mxP;
+        s_qy[nid] = myP;
       }
     }
 
@@ -194,28 +195,28 @@ SOFTWARE.
         const dfloat Gss = ggeo[gid + p_G11ID];
 
         // contributions for u
-        dfloat qrr_u = 0.;
-        dfloat qrs_u = 0.;
-        dfloat qss_u = 0.;
+        dfloat qrr_x = 0.;
+        dfloat qrs_x = 0.;
+        dfloat qss_x = 0.;
 
         // contributions for v
-        dfloat qrr_v = 0.;
-        dfloat qrs_v = 0.;
-        dfloat qss_v = 0.;
+        dfloat qrr_y = 0.;
+        dfloat qrs_y = 0.;
+        dfloat qss_y = 0.;
         #pragma unroll p_Np
           for (int k=0;k<p_Np;k++) {
-            qrr_u += S[n+k*p_Np+0*p_Np*p_Np]*s_q[0][k];
-            qrs_u += S[n+k*p_Np+1*p_Np*p_Np]*s_q[0][k];
-            qss_u += S[n+k*p_Np+2*p_Np*p_Np]*s_q[0][k];
+            qrr_x += S[n+k*p_Np+0*p_Np*p_Np]*s_qx[k];
+            qrs_x += S[n+k*p_Np+1*p_Np*p_Np]*s_qx[k];
+            qss_x += S[n+k*p_Np+2*p_Np*p_Np]*s_qx[k];
 
-            qrr_v += S[n+k*p_Np+0*p_Np*p_Np]*s_q[1][k];
-            qrs_v += S[n+k*p_Np+1*p_Np*p_Np]*s_q[1][k];
-            qss_v += S[n+k*p_Np+2*p_Np*p_Np]*s_q[1][k];
+            qrr_y += S[n+k*p_Np+0*p_Np*p_Np]*s_qy[k];
+            qrs_y += S[n+k*p_Np+1*p_Np*p_Np]*s_qy[k];
+            qss_y += S[n+k*p_Np+2*p_Np*p_Np]*s_qy[k];
           }
 
-        const int id = n*p_Nfields + e*p_Np*p_Nfields;
-        rhs[id+0] -= Grr*qrr_u+Grs*qrs_u+Gss*qss_u;
-        rhs[id+1] -= Grr*qrr_v+Grs*qrs_v+Gss*qss_v;
+        const dlong id = n + e*p_Np;
+        rhsx[id] -= Grr*qrr_x+Grs*qrs_x+Gss*qss_x;
+        rhsy[id] -= Grr*qrr_y+Grs*qrs_y+Gss*qss_y;
       }
     }
   }
@@ -223,14 +224,15 @@ SOFTWARE.
 }  // end kernel laplacian
 
 
-@kernel void aleBCTri2D(const int Nelements,
-                       @restrict const dfloat * x,
-                       @restrict const dfloat * y,
-                       @restrict const dfloat * z,
-                                 const dfloat   t,
-                       @restrict const int    * mapB,
-                       @restrict dfloat  * rhsX,
-                       @restrict dfloat  * q){
+@kernel void aleBCLinElasticTri2D(const int Nelements,
+                                  @restrict const dfloat * x,
+                                  @restrict const dfloat * y,
+                                  @restrict const dfloat * z,
+                                            const dfloat   t,
+                                  @restrict const int    * mapB,
+                                  @restrict dfloat  * rhsX,
+                                  @restrict dfloat  * qx,
+                                  @restrict dfloat  * qy){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
@@ -244,8 +246,8 @@ SOFTWARE.
       if(bc>0){
         bnsMeshBoundary2D(bc, t, x[iid], y[iid],
                                 &mxP, &myP);
-        q[id+0] = mxP;
-        q[id+1] = myP;
+        qx[id+0] = mxP;
+        qx[id+1] = myP;
       }
     }
   }
@@ -257,11 +259,50 @@ SOFTWARE.
       const dlong id  = n+e*p_Np*p_Nfields;
       const dlong iid = n*p_Nfields+e*p_Np*p_Nfields;
 
-      rhsX[id+0*p_Np] = q[iid+0];  // X velocity
-      rhsX[id+1*p_Np] = q[iid+1];  // Y Velocity
-
-      // qx[id] = q[iid+0];
-      // qy[id] = q[iid+1];
+      rhsX[id+0*p_Np] = qx[iid+0];  // X velocity
+      rhsX[id+1*p_Np] = qx[iid+1];  // Y Velocity
     }
   }
-}   // end kernel aleBCTri2D
+}   // end kernel aleBCLinElasticTri2D
+
+
+@kernel void aleBCLaplaceTri2D(const int Nelements,
+                               @restrict const dfloat * x,
+                               @restrict const dfloat * y,
+                               @restrict const dfloat * z,
+                                         const dfloat   t,
+                               @restrict const int    * mapB,
+                               @restrict dfloat  * rhsX,
+                               @restrict dfloat  * qx,
+                               @restrict dfloat  * qy){
+
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+
+      // const int id  = n*p_Nfields+e*p_Np*p_Nfields;
+      const int id  = n+e*p_Np;
+      const int bc  = mapB[id];
+
+      dfloat mxP=0., myP=0.;
+
+      if(bc>0){
+        bnsMeshBoundary2D(bc, t, x[id], y[id],
+                                &mxP, &myP);
+        qx[id] = mxP;
+        qy[id] = myP;
+      }
+    }
+  }
+
+  // second outer loop to change the order
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0;n<p_Np;++n;@inner(0)){
+
+      const dlong id  = n+e*p_Np*2;
+      const dlong iid = n+e*p_Np;
+
+      rhsX[id+0*p_Np] = qx[iid];  // X velocity
+      rhsX[id+1*p_Np] = qy[iid];  // Y Velocity
+    }
+  }
+}   // end kernel aleBCLaplaceTri2D

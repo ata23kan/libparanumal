@@ -92,6 +92,7 @@ public:
   kernel_t pmlRelaxationKernel;
 
   kernel_t vorticityKernel;
+  kernel_t qcriterionKernel;
 
   kernel_t initialConditionKernel;
   kernel_t pmlInitialConditionKernel;
@@ -100,8 +101,8 @@ public:
   mesh_t meshN1;
   int testCase;
 
-  memory<dfloat> meshVelx, meshVely;
-  deviceMemory<dfloat> o_meshVelx, o_meshVely;
+  memory<dfloat> meshVelx, meshVely, meshVelz;
+  deviceMemory<dfloat> o_meshVelx, o_meshVely, o_meshVelz;
   deviceMemory<dfloat> o_VX, o_VX0;  // Vertex positions to be updated in ALE
 
   // Mesh deformation for ALE
@@ -139,8 +140,16 @@ public:
 
   void Report(dfloat time, int tstep);
 
+  void ComputeForces(const dfloat T);
+
   void PlotFields(memory<dfloat>& Q, memory<dfloat>& V, std::string fileName);
 
+  void PlotConstantError(memory<dfloat>& Q, dfloat rbar, dfloat Ubar, dfloat Vbar, std::string fileName);
+
+  void constantErrorNorm(memory<dfloat>& Q, dfloat rbar, dfloat Ubar, dfloat Vbar);
+
+  void EnergyTGV(memory<dfloat>& Q, std::string fileName, dfloat time);
+  
   dfloat MaxWaveSpeed();
 
   void rhsf_pml(deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_pmlQ,

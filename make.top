@@ -56,7 +56,7 @@ ifneq (,${debug})
   export LIBP_DEFINES=-DLIBP_DEBUG
 else
   export LIBP_CFLAGS=-fopenmp -O3 -Wall -Wshadow -Wno-unused-function
-  export LIBP_CXXFLAGS=-fopenmp -O3 -Wall -Wshadow -Wno-unused-function -std=c++17
+  export LIBP_CXXFLAGS=-fopenmp -O3 -Wall -Wshadow -Wno-unused-function -Wno-overloaded-virtual -std=c++17
   export LIBP_DEFINES=
 
   ifeq (GNU,${LIBP_ARCH})

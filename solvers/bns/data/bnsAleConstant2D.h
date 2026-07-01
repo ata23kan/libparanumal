@@ -25,14 +25,9 @@ SOFTWARE.
 */
 
 //mean flow
-#define RBAR 1.0
-#define UBAR 0.1
-#define VBAR 0.0
-
-//Heaving Airfoil
-#define H 0.08
-#define FREQ 0.01
-#define PI 3.14159265
+#define RBAR 1.f
+#define UBAR 1.f
+#define VBAR 1.f
 
 // Initial conditions
 #define bnsInitialConditions2D(c, nu, t, x, y, r, u, v, s11, s12, s22) \
@@ -146,7 +141,7 @@ SOFTWARE.
 { \
   if(bc==1){                                 \
     *(mx)=0.0;                               \
-    *(my)=H*2*PI*FREQ*cos(2*PI*FREQ*t);      \
+    *(my)=0.0;      \
   } else if(bc==2){                          \
     *(mx)=0.0;                               \
     *(my)=0.0;                               \

@@ -1,0 +1,170 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017-2022 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void bnsAleVolumeTet3D(const dlong Nelements,
+                               @restrict const  dlong  *  elementIds,
+                               @restrict const  dfloat *  vgeo,
+                               @restrict const  dfloat *  D,
+                               @restrict const  dfloat * x,
+                               @restrict const  dfloat * y,
+                               @restrict const  dfloat * z,
+                               @restrict const  dfloat * meshVelx,
+                               @restrict const  dfloat * meshVely,
+                               @restrict const  dfloat * meshVelz,
+                               const dfloat t,
+                               const dfloat c,
+                               const dfloat nu,
+                               @restrict const  dfloat *  q,
+                               @restrict dfloat *  rhsq){
+
+  for(dlong et=0;et<Nelements;et++;@outer(0)){  // for all elements
+
+    @shared dfloat s_q[p_Nfields][p_Np];
+    @exclusive dlong e;
+
+    @exclusive dfloat fx, fy, fz;
+
+    for(int n=0;n<p_Np;++n;@inner(0)){     // for all nodes in this element
+      e = elementIds[et];
+      const dlong id = e*p_Nfields*p_Np + n;
+
+      #pragma unroll p_Nfields
+        for(int fld=0; fld<p_Nfields;++fld){
+          s_q[fld][n] = q[id+fld*p_Np];
+        }
+
+      const dfloat r =   s_q[0][n];
+      const dfloat u = c*s_q[1][n]/r;
+      const dfloat v = c*s_q[2][n]/r;
+      const dfloat w = c*s_q[3][n]/r;
+
+      //Body force contribution
+      fx = 0.0; fy = 0.0, fz = 0.0;
+      bnsBodyForce3D(c, nu, t,
+                     x[e*p_Np+n], y[e*p_Np+n], z[e*p_Np+n],
+                     r, u, v, w,
+                     &fx, &fy, &fz);
+    }
+
+    // make sure all node data is loaded into @shared
+
+    for(int n=0;n<p_Np;++n;@inner(0)){
+      // prefetch geometric factors (constant on triangle)
+      const dfloat drdx = vgeo[e*p_Nvgeo + p_RXID];
+      const dfloat drdy = vgeo[e*p_Nvgeo + p_RYID];
+      const dfloat drdz = vgeo[e*p_Nvgeo + p_RZID];
+      const dfloat dsdx = vgeo[e*p_Nvgeo + p_SXID];
+      const dfloat dsdy = vgeo[e*p_Nvgeo + p_SYID];
+      const dfloat dsdz = vgeo[e*p_Nvgeo + p_SZID];
+      const dfloat dtdx = vgeo[e*p_Nvgeo + p_TXID];
+      const dfloat dtdy = vgeo[e*p_Nvgeo + p_TYID];
+      const dfloat dtdz = vgeo[e*p_Nvgeo + p_TZID];
+
+      // compute 'r', 's' and 't' derivatives of (q_m) at node n
+      dfloat r_dqdr[p_Nfields], r_dqds[p_Nfields], r_dqdt[p_Nfields];
+      dfloat r_dqdx[p_Nfields], r_dqdy[p_Nfields], r_dqdz[p_Nfields];
+      dfloat r_rhsq[p_Nfields];
+
+      #pragma unroll p_Nfields
+        for(int fld=0; fld<p_Nfields;++fld){
+          r_dqdr[fld] = 0.f, r_dqds[fld] = 0.f, r_dqdt[fld] = 0.f;
+          r_dqdx[fld] = 0.f, r_dqdy[fld] = 0.f, r_dqdz[fld] = 0.f;
+          r_rhsq[fld] = 0.f;
+        }
+
+      #pragma unroll p_Np
+        for(int i=0;i<p_Np;++i){
+          const dfloat Drni = D[n+i*p_Np+0*p_Np*p_Np];
+          const dfloat Dsni = D[n+i*p_Np+1*p_Np*p_Np];
+          const dfloat Dtni = D[n+i*p_Np+2*p_Np*p_Np];
+          #pragma unroll p_Nfields
+          for(int fld=0; fld<p_Nfields;++fld){
+            r_dqdr[fld] += Drni*s_q[fld][i];
+            r_dqds[fld] += Dsni*s_q[fld][i];
+            r_dqdt[fld] += Dtni*s_q[fld][i];
+          }
+        }
+
+      // Compute derivatives in physical coordinates
+      #pragma unroll p_Nfields
+        for(int fld=0; fld<p_Nfields;++fld){
+          r_dqdx[fld] = drdx*r_dqdr[fld] + dsdx*r_dqds[fld] + dtdx*r_dqdt[fld];
+          r_dqdy[fld] = drdy*r_dqdr[fld] + dsdy*r_dqds[fld] + dtdy*r_dqdt[fld];
+          r_dqdz[fld] = drdz*r_dqdr[fld] + dsdz*r_dqds[fld] + dtdz*r_dqdt[fld];
+        }
+
+      // transport operator
+      r_rhsq[0] = -c*(r_dqdx[1] + r_dqdy[2] + r_dqdz[3]);
+      r_rhsq[1] = -c*(r_dqdx[0] + sqrt(2.0)*r_dqdx[7] + r_dqdy[4] + r_dqdz[5]);
+      r_rhsq[2] = -c*(r_dqdx[4] + r_dqdy[0] + sqrt(2.0)*r_dqdy[8] + r_dqdz[6]);
+      r_rhsq[3] = -c*(r_dqdx[5] + r_dqdy[6] + r_dqdz[0] + sqrt(2.0)*r_dqdz[9]);
+
+      r_rhsq[4] = -c*(r_dqdx[2] + r_dqdy[1]);
+      r_rhsq[5] = -c*(r_dqdx[3] + r_dqdz[1]);
+      r_rhsq[6] = -c*(r_dqdy[3] + r_dqdz[2]);
+
+      r_rhsq[7] = -c*sqrt(2.0)*r_dqdx[1];
+      r_rhsq[8] = -c*sqrt(2.0)*r_dqdy[2];
+      r_rhsq[9] = -c*sqrt(2.0)*r_dqdz[3];
+
+      // Add ALE Advection
+      const dlong vgid = e*p_Np+n;
+      const dfloat vgx = meshVelx[vgid];
+      const dfloat vgy = meshVely[vgid];
+      const dfloat vgz = meshVelz[vgid];
+
+      r_rhsq[0] += vgx*r_dqdx[0] + vgy*r_dqdy[0] + vgz*r_dqdz[0]; 
+      r_rhsq[1] += vgx*r_dqdx[1] + vgy*r_dqdy[1] + vgz*r_dqdz[1]; 
+      r_rhsq[2] += vgx*r_dqdx[2] + vgy*r_dqdy[2] + vgz*r_dqdz[2]; 
+      r_rhsq[3] += vgx*r_dqdx[3] + vgy*r_dqdy[3] + vgz*r_dqdz[3]; 
+      r_rhsq[4] += vgx*r_dqdx[4] + vgy*r_dqdy[4] + vgz*r_dqdz[4]; 
+      r_rhsq[5] += vgx*r_dqdx[5] + vgy*r_dqdy[5] + vgz*r_dqdz[5]; 
+      r_rhsq[6] += vgx*r_dqdx[6] + vgy*r_dqdy[6] + vgz*r_dqdz[6]; 
+      r_rhsq[7] += vgx*r_dqdx[7] + vgy*r_dqdy[7] + vgz*r_dqdz[7]; 
+      r_rhsq[8] += vgx*r_dqdx[8] + vgy*r_dqdy[8] + vgz*r_dqdz[8]; 
+      r_rhsq[9] += vgx*r_dqdx[9] + vgy*r_dqdy[9] + vgz*r_dqdz[9]; 
+
+      // add body forcing
+      r_rhsq[1] += fx*s_q[0][n]/c;
+      r_rhsq[2] += fy*s_q[0][n]/c;
+      r_rhsq[3] += fz*s_q[0][n]/c;
+
+      r_rhsq[4] += fx*s_q[2][n]/c + fy*s_q[1][n]/c;
+      r_rhsq[5] += fx*s_q[3][n]/c + fz*s_q[1][n]/c;
+      r_rhsq[6] += fy*s_q[3][n]/c + fz*s_q[2][n]/c;
+
+      r_rhsq[7] += fx*sqrt(2.0)*s_q[1][n]/c;
+      r_rhsq[8] += fy*sqrt(2.0)*s_q[2][n]/c;
+      r_rhsq[9] += fz*sqrt(2.0)*s_q[3][n]/c;
+
+      // Update
+      const dlong id = e*p_Nfields*p_Np + n;
+      for(int fld=0; fld<p_Nfields;++fld){
+        rhsq[id + fld*p_Np] = r_rhsq[fld];
+      }
+    }  // End node inner loop
+	} // End element outer loop  
+}// End of Kernel aleVolumeTet3D

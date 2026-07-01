@@ -51,6 +51,32 @@ void upwind(const dfloat nx, const dfloat ny, const dfloat c,
   qflux[5] = c*(ny*sqrt(2.0)*dq3);
 }
 
+
+void LLF(const dfloat nx, const dfloat ny, const dfloat c,
+         const dfloat q1M, const dfloat q2M, const dfloat q3M,
+         const dfloat q4M, const dfloat q5M, const dfloat q6M,
+         const dfloat q1B, const dfloat q2B, const dfloat q3B,
+         const dfloat q4B, const dfloat q5B, const dfloat q6B,
+         dfloat * qflux){
+
+  const dfloat alpha = c;
+
+  const dfloat dq1 = 0.5f*(alpha*(q1M-q1B) + c*(nx*(q2B-q2M) + ny*(q3B-q3M)));
+  const dfloat dq2 = 0.5f*(alpha*(q2M-q2B) + c*(nx*(q1B-q1M) + ny*(q4B-q4M) + p_sq2*nx*(q5B-q5M)));
+  const dfloat dq3 = 0.5f*(alpha*(q3M-q3B) + c*(nx*(q4B-q4M) + ny*(q1B-q1M) + p_sq2*ny*(q6B-q6M)));
+  const dfloat dq4 = 0.5f*(alpha*(q4M-q4B) + c*(nx*(q3B-q3M) + ny*(q2B-q2M)));
+  const dfloat dq5 = 0.5f*(alpha*(q5M-q5B) + c*(p_sq2*nx*(q2B-q2M)));
+  const dfloat dq6 = 0.5f*(alpha*(q6M-q6B) + c*(p_sq2*ny*(q3B-q3M)));
+
+  qflux[0] = dq1;
+  qflux[1] = dq2;
+  qflux[2] = dq3;
+  qflux[3] = dq4;
+  qflux[4] = dq5;
+  qflux[5] = dq6;
+}
+
+
 @kernel void bnsSurfaceTri2D(const dlong Nelements,
                             @restrict const  dlong  *  elementIds,
                             @restrict const  dfloat *  sgeo,
@@ -146,6 +172,7 @@ void upwind(const dfloat nx, const dfloat ny, const dfloat c,
 
             // compute (q^*)
             dfloat qflux[p_Nfields];
+            // upwind(nx, ny, c,
             upwind(nx, ny, c,
                    q1M, q2M, q3M, q4M, q5M, q6M,
                    q1P, q2P, q3P, q4P, q5P, q6P,
