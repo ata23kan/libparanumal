@@ -8,6 +8,7 @@ data/bnsAle2D.h
 PLUNGINGAIRFOIL
 
 [MESH FILE]
+mesh/plunging_airfoil_mid.msh
 #mesh/naca0012.msh
 
 [MESH DIMENSION]
@@ -47,10 +48,14 @@ CUDA
 0
 
 [VISCOSITY]
-0.001
+0.0001081081
+#0.00005405405
 
 [SPEED OF SOUND]
 1.0
+
+[CFL NUMBER]
+0.3
 
 [PML PROFILE ORDER]
 4
@@ -65,7 +70,6 @@ CUDA
 COLLOCATION
 
 [TIME INTEGRATOR]
-#LSERK4
 SARK4
 
 [START TIME]
@@ -75,7 +79,7 @@ SARK4
 100
 
 [OUTPUT INTERVAL]
-1
+0.1
 
 [OUTPUT TO FILE]
 TRUE
@@ -100,6 +104,7 @@ LAPLACIAN
 # can be NONE, PARALMOND (Only for Laplacian deformation)
 [MDS PRECONDITIONER]
 NONE
+#PARALMOND
 
 ###########################################
 

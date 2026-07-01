@@ -92,6 +92,7 @@ public:
   kernel_t pmlRelaxationKernel;
 
   kernel_t vorticityKernel;
+  kernel_t qcriterionKernel;
 
   kernel_t initialConditionKernel;
   kernel_t pmlInitialConditionKernel;

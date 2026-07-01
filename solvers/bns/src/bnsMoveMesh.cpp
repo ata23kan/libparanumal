@@ -67,7 +67,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
   case 2:{
     printf("MoveMesh: PLUNGING AIRFOIL\n");
     // Plunging airfoil
-    const dfloat u_inf = 0.2;
+    const dfloat u_inf = 0.1;
     const dfloat xc = 0.5, yc = 0.0;;
     const dfloat r1 = 1.00, r2 = 4.7;
 
@@ -222,7 +222,9 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
     const dfloat a0 = 0.02, a1 = -0.08, a2 = 0.16;
     const dfloat k = 2*PI; // Wave number
-    const dfloat f = 1.0*U_inf; // tailbeat frequency
+    const dfloat Af = 0.2; // Peak to peak tailbeat amplitude 0.2/L
+    const dfloat St = 0.91; // Strouhal number
+    const dfloat f = St * U_inf / Af; // tailbeat frequency
     const dfloat omega = 2.0*PI*f;
 
     // Explicit deformation
