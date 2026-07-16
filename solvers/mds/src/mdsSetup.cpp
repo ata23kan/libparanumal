@@ -138,6 +138,10 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
       precon.Setup<IdentityPrecon>(Ndofs);
     else if(settings.compareSetting("PRECONDITIONER", "PARALMOND"))
       precon.Setup<ParAlmondPrecon>(*this);
+    else if(settings.compareSetting("PRECONDITIONER", "JACOBI"))
+      precon.Setup<JacobiPrecon>(*this);
+    else 
+      LIBP_FORCE_ABORT("Unsupported PRECONDITIONER for mds laplacian");
   } else if (deform_linElastic){
     precon.Setup<IdentityPrecon>(Ndofs);
   }

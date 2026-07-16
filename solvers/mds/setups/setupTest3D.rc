@@ -2,27 +2,27 @@
 2.0
 
 [DATA FILE]
-data/mdsTest2D.h
+data/mdsTest3D.h
 
 [MESH FILE]
 #BOX
 #square_coarse.msh
-square.msh
+square3D.msh
 
 [MESH DIMENSION]
-2
-
-[ELEMENT TYPE] # number of edges
 3
 
+[ELEMENT TYPE] # number of edges
+6
+
 [BOX NX]
-40
+20
 
 [BOX NY]
-40
+20
 
 [BOX NZ]
-40
+20
 
 [BOX DIMX]
 1
@@ -65,8 +65,8 @@ PCG
 
 # can be NONE, JACOBI, PARALMOND (Only for Laplacian deformation)
 [PRECONDITIONER]
-#NONE
-JACOBI
+NONE
+#JACOBI
 #PARALMOND
 
 ###########################################

@@ -42,7 +42,8 @@ SOFTWARE.
                                     @restrict const  dfloat *  z,
                                     @restrict const  int    *  mapB,
                                     @restrict dfloat  *  rhsx,
-                                    @restrict dfloat  *  rhsy){
+                                    @restrict dfloat  *  rhsy,
+                                    @restrict dfloat  *  rhsz){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     @shared dfloat s_qx[p_Np];

@@ -83,7 +83,7 @@ void mdsAddSettings(settings_t& settings,
   settings.newSetting(prefix+"PRECONDITIONER",
                       "NONE",
                       "Preconditioning Strategy",
-                      {"NONE", "PARALMOND"});
+                      {"NONE", "JACOBI", "PARALMOND"});
 
   settings.newSetting(prefix+"VERBOSE",
                       "FALSE",

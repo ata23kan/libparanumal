@@ -137,6 +137,11 @@ public:
 
   void BuildOperatorMatrix(parAlmond::parCOO& A);
   void BuildOperatorMatrixLaplacianTri2D(parAlmond::parCOO& A);
+  void BuildOperatorMatrixLaplacianTet3D(parAlmond::parCOO& A);
+
+  void BuildOperatorDiagonal(memory<dfloat>& diagA);
+  void BuildOperatorDiagonalLaplacianTri2D(memory<dfloat>& diagA);
+  void BuildOperatorDiagonalLaplacianTet3D(memory<dfloat>& diagA);
 
   mds_t SetupNewDegree(mesh_t& meshF);
 

@@ -25,11 +25,9 @@ SOFTWARE.
 */
 
 /* Dirichlet 1, Neumann 2, Robin 3 (defaulted to Neumann for now) */
-#define mdsBoundaryConditions3D(bc,x,y,z,nx,ny,nz,uM,uxM,uyM,uzM,uB,uxB,uyB,uzB)  \
+#define mdsBoundaryConditions3D(bc,x,y,z,uB,vB,wB)  \
   {                 \
-    if     (bc==1) mdsDirichletCondition3D(x,y,z,nx,ny,nz,uM,uxM,uyM,uzM,uB,uxB,uyB,uzB) \
-    else if(bc==2) mdsNeumannCondition3D(x,y,z,nx,ny,nz,uM,uxM,uyM,uzM,uB,uxB,uyB,uzB)  \
-    else           mdsNeumannCondition3D(x,y,z,nx,ny,nz,uM,uxM,uyM,uzM,uB,uxB,uyB,uzB)  \
+    if     (bc==1) mdsDirichletCondition3D(x,y,z,uB,vB,wB) \
   }
 
 

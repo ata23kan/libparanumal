@@ -24,14 +24,24 @@ SOFTWARE.
 
 */
 
+#include "mdsPrecon.hpp"
 
-@kernel void mask(const dlong Nmasked,
-                  @restrict const dlong  *maskIds,
-                  @restrict       dfloat *q){
+// Jacobi preconditioner
+JacobiPrecon::JacobiPrecon(mds_t& _mds):
+  mds(_mds) {
+    memory<dfloat> diagA   (mds.Ndofs);
+    memory<pfloat> invDiagA(mds.Ndofs);
+    mds.BuildOperatorDiagonal(diagA);
+    for (dlong n=0;n<mds.Ndofs;n++)
+      invDiagA[n] = 1.0/diagA[n];
 
-  for(dlong n=0;n<Nmasked;++n;@tile(256,@outer,@inner)){
-    if(n<Nmasked){
-      q[maskIds[n]] = 0.;
-    }
-  }
+    o_invDiagA = mds.platform.malloc<pfloat>(invDiagA);
+}
+
+void JacobiPrecon::Operator(deviceMemory<pfloat>& o_r, deviceMemory<pfloat>& o_Mr) {
+
+  linAlg_t& linAlg = mds.platform.linAlg();
+
+  // Mr = invDiag.*r
+  linAlg.amxpy(mds.Ndofs, (pfloat)1.0, o_invDiagA, o_r, (pfloat)0.0, o_Mr);
 }

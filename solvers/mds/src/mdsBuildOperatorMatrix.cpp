@@ -49,8 +49,7 @@ void mds_t::BuildOperatorMatrix(parAlmond::parCOO& A) {
     // break;
   }
   case Mesh::TETRAHEDRA:
-    LIBP_FORCE_ABORT("Tetrahedrons are not supported yet for mesh deformation!");
-    // BuildOperatorMatrixContinuousTet3D(A); break;
+    BuildOperatorMatrixLaplacianTet3D(A); break;
   case Mesh::HEXAHEDRA:
     LIBP_FORCE_ABORT("Hexahedral elements are not supported yet for mesh deformation!");
     // BuildOperatorMatrixContinuousHex3D(A); break;
@@ -165,6 +164,138 @@ void mds_t::BuildOperatorMatrixLaplacianTri2D(parAlmond::parCOO& A) {
 
          return a.col < b.col;
        });
+
+  // compress duplicates
+  cnt = 0;
+  for(dlong n=1;n<A.nnz;++n){
+    if(A.entries[n].row == A.entries[cnt].row &&
+       A.entries[n].col == A.entries[cnt].col){
+       A.entries[cnt].val += A.entries[n].val;
+    }
+    else{
+      ++cnt;
+      A.entries[cnt] = A.entries[n];
+    }
+  }
+  if (A.nnz) cnt++;
+  A.nnz = cnt;
+
+  if(Comm::World().rank()==0) printf("done.\n");
+}
+
+void mds_t::BuildOperatorMatrixLaplacianTet3D(parAlmond::parCOO& A) {
+
+  // number of degrees of freedom on this rank (after gathering)
+  hlong Ngather = ogsMasked.Ngather;
+
+  // every gathered degree of freedom has its own global id
+  A.globalRowStarts.malloc(mesh.size+1,0);
+  A.globalColStarts.malloc(mesh.size+1,0);
+  mesh.comm.Allgather(Ngather, A.globalRowStarts+1);
+  for(int r=0;r<mesh.size;++r) {
+    A.globalRowStarts[r+1] = A.globalRowStarts[r]+A.globalRowStarts[r+1];
+    A.globalColStarts[r+1] = A.globalRowStarts[r+1];
+  }
+
+  // Build non-zeros of stiffness matrix (unassembled)
+  dlong nnzLocal = mesh.Np*mesh.Np*mesh.Nelements;
+
+  memory<parAlmond::parCOO::nonZero_t> sendNonZeros(nnzLocal);
+  memory<int> AsendCounts (mesh.size, 0);
+  memory<int> ArecvCounts (mesh.size);
+  memory<int> AsendOffsets(mesh.size+1);
+  memory<int> ArecvOffsets(mesh.size+1);
+
+  //Build unassembed non-zeros
+  if(Comm::World().rank()==0) {printf("Building full FEM matrix...");fflush(stdout);}
+
+  dlong cnt =0;
+  //#pragma omp parallel for
+  for (dlong e=0;e<mesh.Nelements;e++) {
+
+    dfloat Grr = mesh.ggeo[e*mesh.Nggeo + mesh.G00ID];
+    dfloat Grs = mesh.ggeo[e*mesh.Nggeo + mesh.G01ID];
+    dfloat Grt = mesh.ggeo[e*mesh.Nggeo + mesh.G02ID];
+    dfloat Gss = mesh.ggeo[e*mesh.Nggeo + mesh.G11ID];
+    dfloat Gst = mesh.ggeo[e*mesh.Nggeo + mesh.G12ID];
+    dfloat Gtt = mesh.ggeo[e*mesh.Nggeo + mesh.G22ID];
+    // dfloat J   = mesh.wJ[e];
+
+    for (int n=0;n<mesh.Np;n++) {
+      if (maskedGlobalNumbering[e*mesh.Np + n]<0) continue; //skip masked nodes
+      for (int m=0;m<mesh.Np;m++) {
+        if (maskedGlobalNumbering[e*mesh.Np + m]<0) continue; //skip masked nodes
+        dfloat val = 0.;
+
+        val += Grr*mesh.Srr[m+n*mesh.Np];
+        val += Grs*mesh.Srs[m+n*mesh.Np];
+        val += Grt*mesh.Srt[m+n*mesh.Np];
+        val += Gss*mesh.Sss[m+n*mesh.Np];
+        val += Gst*mesh.Sst[m+n*mesh.Np];
+        val += Gtt*mesh.Stt[m+n*mesh.Np];
+        // val += J*lambda*mesh.MM[m+n*mesh.Np];
+
+        dfloat nonZeroThreshold = 1e-7;
+        if (fabs(val)>nonZeroThreshold) {
+          //#pragma omp critical
+          {
+            // pack non-zero
+            sendNonZeros[cnt].val = val;
+            sendNonZeros[cnt].row = maskedGlobalNumbering[e*mesh.Np + n];
+            sendNonZeros[cnt].col = maskedGlobalNumbering[e*mesh.Np + m];
+            cnt++;
+          }
+        }
+      }
+    }
+  }
+
+  // sort by row ordering
+  sort(sendNonZeros.ptr(), sendNonZeros.ptr()+cnt,
+      [](const parAlmond::parCOO::nonZero_t& a,
+         const parAlmond::parCOO::nonZero_t& b) {
+        if (a.row < b.row) return true;
+        if (a.row > b.row) return false;
+
+        return a.col < b.col;
+      });
+
+  // count how many non-zeros to send to each process
+  int rr=0;
+  for(dlong n=0;n<cnt;++n) {
+    const hlong id = sendNonZeros[n].row;
+    while(id>=A.globalRowStarts[rr+1]) rr++;
+    AsendCounts[rr]++;
+  }
+
+  // find how many nodes to expect (should use sparse version)
+  mesh.comm.Alltoall(AsendCounts, ArecvCounts);
+
+  // find send and recv offsets for gather
+  A.nnz = 0;
+  AsendOffsets[0] = 0;
+  ArecvOffsets[0] = 0;
+  for(int r=0;r<mesh.size;++r){
+    AsendOffsets[r+1] = AsendOffsets[r] + AsendCounts[r];
+    ArecvOffsets[r+1] = ArecvOffsets[r] + ArecvCounts[r];
+    A.nnz += ArecvCounts[r];
+  }
+
+  A.entries.malloc(A.nnz);
+
+  // determine number to receive
+  mesh.comm.Alltoallv(sendNonZeros, AsendCounts, AsendOffsets,
+                      A.entries,    ArecvCounts, ArecvOffsets);
+
+  // sort received non-zero entries by row block (may need to switch compareRowColumn tests)
+  sort(A.entries.ptr(), A.entries.ptr()+A.nnz,
+      [](const parAlmond::parCOO::nonZero_t& a,
+         const parAlmond::parCOO::nonZero_t& b) {
+        if (a.row < b.row) return true;
+        if (a.row > b.row) return false;
+
+        return a.col < b.col;
+      });
 
   // compress duplicates
   cnt = 0;

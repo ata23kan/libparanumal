@@ -31,7 +31,8 @@ SOFTWARE.
                                     @restrict const  int    *  mapB,
                                     @restrict dfloat  *  Q,
                                     @restrict dfloat  *  qx,
-                                    @restrict dfloat  *  qy){
+                                    @restrict dfloat  *  qy,
+                                    @restrict dfloat  *  qz){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){

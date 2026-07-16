@@ -30,6 +30,19 @@ SOFTWARE.
 #include "mds.hpp"
 #include "parAlmond.hpp"
 
+// Jacobi preconditioner
+class JacobiPrecon: public operator_t {
+private:
+  mds_t mds;
+
+  deviceMemory<pfloat> o_invDiagA;
+
+public:
+  JacobiPrecon() = default;
+  JacobiPrecon(mds_t& mds);
+  void Operator(deviceMemory<pfloat>& o_r, deviceMemory<pfloat>& o_Mr);
+};
+
 //ParAlmond AMG preconditioner
 class ParAlmondPrecon: public operator_t {
 private:

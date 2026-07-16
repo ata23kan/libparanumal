@@ -37,12 +37,6 @@ void mds_t::Run(){
   NglobalDofs = ogsMasked.NgatherGlobal*Nfields;
 
 
-  // if (settings.compareSetting("DISCRETIZATION", "CONTINUOUS")) {
-  //   NglobalDofs = ogsMasked.NgatherGlobal*Nfields;
-  // } else {
-  //   NglobalDofs = mesh.NelementsGlobal*mesh.Np*Nfields;
-  // }
-
   linearSolver_t<dfloat> linearSolver;
   if (settings.compareSetting("LINEAR SOLVER","NBPCG")){
     linearSolver.Setup<LinearSolver::nbpcg<dfloat> >(Ndofs, Nhalo, platform, settings, comm);
@@ -83,10 +77,10 @@ void mds_t::Run(){
 
   std::string fileName, kernelName;
 
-  fileName   = oklFilePrefix + "mdsRhs" + suffix + oklFileSuffix;
-  kernelName = "mdsRhs" + suffix;
-  kernel_t forcingKernel = platform.buildKernel(fileName, kernelName,
-                                                    kernelInfo);
+  // fileName   = oklFilePrefix + "mdsRhs" + suffix + oklFileSuffix;
+  // kernelName = "mdsRhs" + suffix;
+  // kernel_t forcingKernel = platform.buildKernel(fileName, kernelName,
+  //                                                   kernelInfo);
 
   kernel_t rhsBCKernel, addBCKernel;
 
@@ -121,13 +115,17 @@ void mds_t::Run(){
   memory<dfloat> xL(Nall);
   memory<dfloat> ryL(Nall);
   memory<dfloat> yL(Nall);
+  memory<dfloat> rzL(Nall);
+  memory<dfloat> zL(Nall);
 
   deviceMemory<dfloat> o_rxL = platform.reserve<dfloat>(Nall);
   deviceMemory<dfloat> o_xL = platform.reserve<dfloat>(Nall);
   deviceMemory<dfloat> o_ryL;
   deviceMemory<dfloat> o_yL;
+  deviceMemory<dfloat> o_rzL;
+  deviceMemory<dfloat> o_zL;
 
-  deviceMemory<dfloat> o_rx, o_x, o_ry, o_y;
+  deviceMemory<dfloat> o_rx, o_x, o_ry, o_y, o_rz, o_z;
   dlong Ng = ogsMasked.Ngather;
   dlong Nghalo = gHalo.Nhalo;
   dlong Ngall  = Nfields*(Ng+Nghalo);
@@ -143,9 +141,15 @@ void mds_t::Run(){
     o_ryL = platform.reserve<dfloat>(Nall);
     o_yL  = platform.reserve<dfloat>(Nall);
     platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_yL);
-
     o_ry = platform.reserve<dfloat>(Ngall);
     o_y  = platform.reserve<dfloat>(Ngall);
+    if(mesh.dim==3){
+      o_rzL = platform.reserve<dfloat>(Nall);
+      o_zL  = platform.reserve<dfloat>(Nall);
+      platform.linAlg().set(mesh.Nelements*mesh.Np*Nfields, (dfloat)0.0, o_zL);
+      o_rz = platform.reserve<dfloat>(Ngall);
+      o_z  = platform.reserve<dfloat>(Ngall);
+    }
   }
 
   rhsBCKernel(mesh.Nelements,
@@ -166,7 +170,8 @@ void mds_t::Run(){
               mesh.o_z,
               o_mapB,
               o_rxL,
-              o_ryL);
+              o_ryL,
+              o_rzL);
 
   // gather rhs to globalDofs if c0
   ogsMasked.Gather(o_rx, o_rxL, Nfields, ogs::Add, ogs::Trans);
@@ -178,17 +183,24 @@ void mds_t::Run(){
 
   // timePoint_t start = GlobalPlatformTime(platform);
   timePoint_t start;
-  int iter_u, iter_v;
+  int iter_u;
   if(deform_laplace){
     ogsMasked.Gather(o_ry, o_ryL, 1, ogs::Add, ogs::Trans);
     ogsMasked.Gather(o_y, o_yL, 1, ogs::Add, ogs::NoTrans);
 
     start = GlobalPlatformTime(platform);
     iter_u = Solve(linearSolver, o_x, o_rx, tol, maxIter, verbose);
-    iter_v = Solve(linearSolver, o_y, o_ry, tol, maxIter, verbose);
+    int iter_v = Solve(linearSolver, o_y, o_ry, tol, maxIter, verbose);
 
     ogsMasked.Scatter(o_xL, o_x, 1, ogs::NoTrans);
     ogsMasked.Scatter(o_yL, o_y, 1, ogs::NoTrans);
+
+    if(mesh.dim==3){
+      ogsMasked.Gather(o_rz, o_rzL, 1, ogs::Add, ogs::Trans);
+      ogsMasked.Gather(o_z, o_zL, 1, ogs::Add, ogs::NoTrans);
+      int iter_w = Solve(linearSolver, o_z, o_rz, tol, maxIter, verbose);
+      ogsMasked.Scatter(o_zL, o_z, 1, ogs::NoTrans);
+    }
   } else if(deform_linElastic){
 
     start = GlobalPlatformTime(platform);
@@ -197,13 +209,6 @@ void mds_t::Run(){
 
     ogsMasked.Scatter(o_xL, o_x, Nfields, ogs::NoTrans);
   }
-
-  //call the solver
-  // int iter_u = Solve(linearSolver, o_xu, o_ru, tol, maxIter, verbose);
-
-  //add the boundary data to the masked nodes
-  // scatter x to LocalDofs if c0
-  // ogsMasked.Scatter(o_xuL, o_xu, Nfields, ogs::NoTrans);
 
   memory<dfloat> Q(mesh.dim*mesh.Np*mesh.Nelements);
   deviceMemory<dfloat> o_Q;
@@ -217,8 +222,9 @@ void mds_t::Run(){
               o_mapB,
               o_Q,
               o_xL,
-              o_yL);
-  
+              o_yL,
+              o_zL);
+
   timePoint_t end = GlobalPlatformTime(platform);
   double elapsedTime = ElapsedTime(start, end);
 

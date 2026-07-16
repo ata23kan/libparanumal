@@ -24,26 +24,44 @@ SOFTWARE.
 
 */
 
-@kernel void mdsAddBCQuad2D(const int Nelements,
-                              @restrict const  dfloat *  x,
-                              @restrict const  dfloat *  y,
-                              @restrict const  dfloat *  z,
-                              @restrict const  int    *  mapB,
-                              @restrict dfloat  *  q){
+@kernel void mdsAddBCLaplacianTet3D(const int Nelements,
+                                    @restrict const  dfloat *  x,
+                                    @restrict const  dfloat *  y,
+                                    @restrict const  dfloat *  z,
+                                    @restrict const  int    *  mapB,
+                                    @restrict dfloat  *  Q,
+                                    @restrict dfloat  *  qx,
+                                    @restrict dfloat  *  qy,
+                                    @restrict dfloat  *  qz){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
+      
       const int id = n+e*p_Np;
-      const int bc = mapB[n+e*p_Np];
+      const int bc = mapB[id];
 
-      dfloat dudxP=0, dudyP=0, uP=0;
+      dfloat uP=0., vP=0., wP=0.;
 
-      if(bc==1) {
-        mdsBoundaryConditions2D(bc, x[id], y[id], 0.f, 0.f, \
-                                      0.f, 0.f, 0.f,                \
-                                      uP, dudxP, dudyP);
-        q[id] = uP;
+      if(bc>0) {
+        mdsBoundaryConditions3D(bc, x[id], y[id], z[id],
+                                uP, vP, wP);
+        qx[id] = uP;
+        qy[id] = vP;
+        qz[id] = wP;
       }
+    }
+  }
+
+  // Second outer loop to write Q
+  for(int e=0;e<Nelements;e++;@outer(0)){
+    for(int n=0; n<p_Np;++n;@inner(0)){
+
+      const dlong id  = n + e*p_Np*3;
+      const dlong iid = n + e*p_Np;
+
+      Q[id+0*p_Np] = qx[iid];
+      Q[id+1*p_Np] = qy[iid];
+      Q[id+2*p_Np] = qz[iid];
     }
   }
 }

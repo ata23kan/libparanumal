@@ -24,26 +24,26 @@ SOFTWARE.
 
 */
 
-@kernel void mdsAddBCTet3D(const int Nelements,
-                              @restrict const  dfloat *  x,
-                              @restrict const  dfloat *  y,
-                              @restrict const  dfloat *  z,
-                              @restrict const  int    *  mapB,
-                              @restrict dfloat  *  q){
+#define PI 3.14159265358979323846
 
-  for(int e=0;e<Nelements;e++;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = n+e*p_Np;
-      const int bc = mapB[n+e*p_Np];
+// /* forcing function   */
+// #define mdsForcing2D(x, y, lambda, f)  \
+//   {                                         \
+//     f  = 0.0*x;   \
+//   }
 
-      dfloat dudxP=0, dudyP=0, dudzP=0, uP=0;
-
-      if(bc==1) {
-        mdsBoundaryConditions3D(bc, x[id], y[id], z[id], nx, ny, nz, \
-                                        0.f, 0.f, 0.f, 0.f,               \
-                                        uP, dudxP, dudyP, dudzP);
-        q[id] = uP;
-      }
-    }
+/* Dirichlet boundary condition */
+#define mdsDirichletCondition3D(x,y,z,uB,vB,wB)  \
+  {                                               \
+    uB = x;                                       \
+    vB = y;                                       \
+    wB = (abs(z-1)<1e-8) ? z-0.25*sin(PI*x)*sin(PI*y) : z; \
   }
-}
+
+// /* Neumann boundary condition   */
+// #define mdsNeumannCondition2D(x,y,nx,ny,uM,uxM,uyM,uB,vB,uxB,uyB)  \
+//   {              \
+//     uB  = uM;    \
+//     uxB = -PI*cos(PI*x)*sin(PI*y);   \
+//     uyB = -PI*sin(PI*x)*cos(PI*y);   \
+//   }

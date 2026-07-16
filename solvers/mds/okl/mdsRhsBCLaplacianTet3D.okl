@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-@kernel void mdsRhsBCLinElasticTri2D(const dlong Nelements,
+@kernel void mdsRhsBCLaplacianTet3D(const dlong Nelements,
                                     @restrict const  dfloat *  wJ,
                                     @restrict const  dfloat *  ggeo,
                                     @restrict const  dfloat *  sgeo,
@@ -46,104 +46,104 @@ SOFTWARE.
                                     @restrict dfloat  *  rhsz){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
-
-    @shared dfloat s_q[p_Nfields][p_Np];
+    @shared dfloat s_qx[p_Np];
+    @shared dfloat s_qy[p_Np];
+    @shared dfloat s_qz[p_Np];
 
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_Np){
-        for(int fld=0; fld<p_Nfields; fld++){
-          s_q[fld][n] = 0.;          
+        for(int fld=0;fld<p_Nfields;fld++){
+          s_qx[n] = 0.;
+          s_qy[n] = 0.;
+          s_qz[n] = 0.;
         }
       }
     }
-
-
+    
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_NfacesNfp){
         const int id  = n + e*p_Nfaces*p_Nfp;
         const int idM = vmapM[id];
         const int nid = idM%p_Np;
 
-
-        dfloat uP=0, vP=0;
+        dfloat uP=0., vP=0., wP=0.;
 
         const int bc = mapB[idM];
-        if(bc>0) {
-          mdsBoundaryConditions2D(bc, x[idM], y[idM], 
-                                  uP, vP);
+        if(bc>0){
+          mdsBoundaryConditions3D(bc, x[idM], y[idM], z[idM],
+                                  uP, vP, wP);
         }
-
-        s_q[0][nid] = uP;
-        s_q[1][nid] = vP;
+        s_qx[nid] = uP;
+        s_qy[nid] = vP;
+        s_qz[nid] = wP;
       }
     }
 
-
     for(int n=0;n<p_Nmax;++n;@inner(0)){
       if(n<p_Np){
-        //volume Dirichlet data
+        // volume Dirichlet data
         const int gid = e*p_Nggeo;
-        const int vid = e*p_Nvgeo;
-
-        const dfloat rx = vgeo[vid + p_RXID];
-        const dfloat ry = vgeo[vid + p_RYID];
-        const dfloat sx = vgeo[vid + p_SXID];
-        const dfloat sy = vgeo[vid + p_SYID];
-        const dfloat J   = wJ[e];
-
         const dfloat Grr = ggeo[gid + p_G00ID];
         const dfloat Grs = ggeo[gid + p_G01ID];
+        const dfloat Grt = ggeo[gid + p_G02ID];
         const dfloat Gss = ggeo[gid + p_G11ID];
+        const dfloat Gst = ggeo[gid + p_G12ID];
+        const dfloat Gtt = ggeo[gid + p_G22ID];
 
-        // contributions for u
-        dfloat qrr_u = 0.;
-        dfloat qrs_u = 0.;
-        dfloat qsr_u = 0.;
-        dfloat qss_u = 0.;
+        // contributions for x
+        dfloat qrr_x = 0.;
+        dfloat qrs_x = 0.;
+        dfloat qrt_x = 0.;
+        dfloat qss_x = 0.;
+        dfloat qst_x = 0.;
+        dfloat qtt_x = 0.;
 
-        // contributions for v
-        dfloat qrr_v = 0.;
-        dfloat qrs_v = 0.;
-        dfloat qsr_v = 0.;
-        dfloat qss_v = 0.;
+        // contributions for y
+        dfloat qrr_y = 0.;
+        dfloat qrs_y = 0.;
+        dfloat qrt_y = 0.;
+        dfloat qss_y = 0.;
+        dfloat qst_y = 0.;
+        dfloat qtt_y = 0.;
+
+        // contributions for z
+        dfloat qrr_z = 0.;
+        dfloat qrs_z = 0.;
+        dfloat qrt_z = 0.;
+        dfloat qss_z = 0.;
+        dfloat qst_z = 0.;
+        dfloat qtt_z = 0.;
 
         #pragma unroll p_Np
           for (int k=0;k<p_Np;k++) {
-            dfloat qn_u = s_q[0][k];
-            dfloat qn_v = s_q[1][k];
+            qrr_x += S[n+k*p_Np+0*p_Np*p_Np]*s_qx[k];
+            qrs_x += S[n+k*p_Np+1*p_Np*p_Np]*s_qx[k];
+            qrt_x += S[n+k*p_Np+2*p_Np*p_Np]*s_qx[k];
+            qss_x += S[n+k*p_Np+3*p_Np*p_Np]*s_qx[k];
+            qst_x += S[n+k*p_Np+4*p_Np*p_Np]*s_qx[k];
+            qtt_x += S[n+k*p_Np+5*p_Np*p_Np]*s_qx[k];
 
-            qrr_u += Se[n+k*p_Np+0*p_Np*p_Np]*qn_u;
-            qrs_u += Se[n+k*p_Np+1*p_Np*p_Np]*qn_u;
-            qsr_u += Se[n+k*p_Np+2*p_Np*p_Np]*qn_u;
-            qss_u += Se[n+k*p_Np+3*p_Np*p_Np]*qn_u;
+            qrr_y += S[n+k*p_Np+0*p_Np*p_Np]*s_qy[k];
+            qrs_y += S[n+k*p_Np+1*p_Np*p_Np]*s_qy[k];
+            qrt_y += S[n+k*p_Np+2*p_Np*p_Np]*s_qy[k];
+            qss_y += S[n+k*p_Np+3*p_Np*p_Np]*s_qy[k];
+            qst_y += S[n+k*p_Np+4*p_Np*p_Np]*s_qy[k];
+            qtt_y += S[n+k*p_Np+5*p_Np*p_Np]*s_qy[k];
 
-            qrr_v += Se[n+k*p_Np+0*p_Np*p_Np]*qn_v;
-            qrs_v += Se[n+k*p_Np+1*p_Np*p_Np]*qn_v;
-            qsr_v += Se[n+k*p_Np+2*p_Np*p_Np]*qn_v;
-            qss_v += Se[n+k*p_Np+3*p_Np*p_Np]*qn_v;
+            qrr_z += S[n+k*p_Np+0*p_Np*p_Np]*s_qz[k];
+            qrs_z += S[n+k*p_Np+1*p_Np*p_Np]*s_qz[k];
+            qrt_z += S[n+k*p_Np+2*p_Np*p_Np]*s_qz[k];
+            qss_z += S[n+k*p_Np+3*p_Np*p_Np]*s_qz[k];
+            qst_z += S[n+k*p_Np+4*p_Np*p_Np]*s_qz[k];
+            qtt_z += S[n+k*p_Np+5*p_Np*p_Np]*s_qz[k];
+            
           }
 
-        const int id = n*p_Nfields + e*p_Np*p_Nfields;
-        const int id2 = id + Nelements*p_Np;
-
-        dfloat ddx_dudx = rx*rx*qrr_u + rx*sx*(qrs_u+qsr_u) + sx*sx*qss_u;
-        dfloat ddy_dudy = ry*ry*qrr_u + ry*sy*(qrs_u+qsr_u) + sy*sy*qss_u;
-        dfloat ddx_dvdy = rx*ry*qrr_v + ry*sx*qrs_v + sy*rx*qsr_v + sx*sy*qss_v;
-        dfloat ddy_dvdx = rx*ry*qrr_v + rx*sy*qrs_v + sx*ry*qsr_v + sx*sy*qss_v;
-
-        // ddx((lambda+2mu)dudx + lambda*dvdy) + ddy(mu*dudy + mu*dvdx)
-        rhsx[id+0] -= J * ((lambda+2*mu)*ddx_dudx +mu*ddy_dudy + lambda*ddx_dvdy + mu*ddy_dvdx);
-
-        dfloat ddx_dudy = ry*rx*qrr_u + ry*sx*qrs_u + sy*rx*qsr_u + sy*sx*qss_u;
-        dfloat ddy_dudx = rx*ry*qrr_u + rx*sy*qrs_u + sx*ry*qsr_u + sx*sy*qss_u;
-        dfloat ddx_dvdx = rx*rx*qrr_v + rx*sx*(qrs_v+qsr_v) + sx*sx*qss_v;
-        dfloat ddy_dvdy = ry*ry*qrr_v + ry*sy*(qrs_v+qsr_v) + sy*sy*qss_v;
-
-        // ddx(mu*dudy+mu*dvdx) + ddy((lambda+2mu)dvdy+lambda*dudx)
-        rhsx[id+1] -= J * (mu*ddx_dudy + mu * ddx_dvdx + (lambda+2*mu)*ddy_dvdy + lambda*ddy_dudx);          
-    
+        const dlong id = n+e*p_Np;
+        rhsx[id] -= Grr*qrr_x+Grs*qrs_x+Grt*qrt_x+Gss*qss_x+Gst*qst_x+Gtt*qtt_x;
+        rhsy[id] -= Grr*qrr_y+Grs*qrs_y+Grt*qrt_y+Gss*qss_y+Gst*qst_y+Gtt*qtt_y;
+        rhsz[id] -= Grr*qrr_z+Grs*qrs_z+Grt*qrt_z+Gss*qss_z+Gst*qst_z+Gtt*qtt_z;
       }
     }
   }
 }
-

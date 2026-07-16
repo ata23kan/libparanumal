@@ -55,10 +55,8 @@ void mds_t::PlotNewMesh2(memory<dfloat>& Q, std::string fileName){
   for(dlong e=0;e<mesh.Nelements;++e){
     mesh.PlotInterp(Q + 0*mesh.Np + e*mesh.Np*mesh.dim, Ix, scratch);
     mesh.PlotInterp(Q + 1*mesh.Np + e*mesh.Np*mesh.dim, Iy, scratch);
-    // mesh.PlotInterp(mesh.x + e*mesh.Np, Ix, scratch);
-    // mesh.PlotInterp(mesh.y + e*mesh.Np, Iy, scratch);
     if(mesh.dim==3)
-      mesh.PlotInterp(mesh.z + e*mesh.Np, Iz, scratch);
+      mesh.PlotInterp(Q+ 2*mesh.Np + e*mesh.Np*mesh.dim, Iz, scratch);
 
     if (mesh.dim==2) {
       for(int n=0;n<mesh.plotNp;++n){
