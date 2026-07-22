@@ -39,7 +39,8 @@ SOFTWARE.
                         @restrict const  dfloat *  z,
                         @restrict const  int    *  mapB,
                         @restrict dfloat        *  rhsx,
-                        @restrict dfloat        *  rhsy){
+                        @restrict dfloat        *  rhsy,
+                        @restrict dfloat        *  rhsz) {
 
   for(int e=0;e<Nelements;e++;@outer(0)){
 
@@ -151,7 +152,8 @@ SOFTWARE.
                         @restrict const  dfloat *  z,
                         @restrict const  int    *  mapB,
                         @restrict dfloat        *  rhsx,
-                        @restrict dfloat        *  rhsy){
+                        @restrict dfloat        *  rhsy,
+                        @restrict dfloat        *  rhsz){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     @shared dfloat s_qx[p_Np];
@@ -232,7 +234,8 @@ SOFTWARE.
                                   @restrict const int    * mapB,
                                   @restrict dfloat  * rhsX,
                                   @restrict dfloat  * qx,
-                                  @restrict dfloat  * qy){
+                                  @restrict dfloat  * qy,
+                                  @restrict dfloat  * qz){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){
@@ -274,7 +277,8 @@ SOFTWARE.
                                @restrict const int    * mapB,
                                @restrict dfloat  * rhsX,
                                @restrict dfloat  * qx,
-                               @restrict dfloat  * qy){
+                               @restrict dfloat  * qy,
+                               @restrict dfloat  * qz){
 
   for(int e=0;e<Nelements;e++;@outer(0)){
     for(int n=0;n<p_Np;++n;@inner(0)){

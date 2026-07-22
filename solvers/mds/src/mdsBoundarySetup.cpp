@@ -89,35 +89,34 @@ void mds_t::BoundarySetup(){
 
   for (int n=0;n<mesh.Nelements*mesh.Np;n++) {
     int bc = mesh.mapB[n];
-    int final_bc_type = 0;
+    // int final_bc_type = 0;
 
     // Check standard external boundaries
     if (bc>0) {
-      final_bc_type = BCType[bc];
-      // int BC = BCType[bc];     //translate mesh's boundary flag
-      // mapB[n] = BC;  //record it
-      // if (mapB[n] > 0) Nmasked++;   //Dirichlet boundary
-      // if (mapB[n] == 1) Nmasked++;   //Dirichlet boundary
+      // final_bc_type = BCType[bc];
+      int BC = BCType[bc];     //translate mesh's boundary flag
+      mapB[n] = BC;  //record it
+      if (mapB[n] > 0) Nmasked++;   //Dirichlet boundary
     }
 
-    // Check internal nodes if they belong to the PML interface
-    // Only implemented for 2D
-    if(final_bc_type==0){
-      dfloat xn = mesh.x[n];
-      dfloat yn = mesh.y[n];
+    // // Check internal nodes if they belong to the PML interface
+    // // Only implemented for 2D
+    // if(final_bc_type==0){
+    //   dfloat xn = mesh.x[n];
+    //   dfloat yn = mesh.y[n];
 
-      // Check if node is on the Left or Right Interface
-      bool on_X_Interface = (fabs(xn - x_min) < pml_tol) || (fabs(xn - x_max) < pml_tol);
+    //   // Check if node is on the Left or Right Interface
+    //   bool on_X_Interface = (fabs(xn - x_min) < pml_tol) || (fabs(xn - x_max) < pml_tol);
        
-      // Check if node is on the Top or Bottom Interface
-      bool on_Y_Interface = (fabs(yn - y_min) < pml_tol) || (fabs(yn - y_max) < pml_tol);
+    //   // Check if node is on the Top or Bottom Interface
+    //   bool on_Y_Interface = (fabs(yn - y_min) < pml_tol) || (fabs(yn - y_max) < pml_tol);
 
-      if(on_X_Interface || on_Y_Interface){
-        final_bc_type = 6; // Bounding box translation
-      }
-    }
-    mapB[n] = final_bc_type; // Record it
-    if(mapB[n]>0) Nmasked++; // Count all nodes for Dirichlet condition
+    //   if(on_X_Interface || on_Y_Interface){
+    //     final_bc_type = 6; // Bounding box translation
+    //   }
+    // }
+    // mapB[n] = final_bc_type; // Record it
+    // if(mapB[n]>0) Nmasked++; // Count all nodes for Dirichlet condition
   }
   o_mapB = platform.malloc<int>(mapB);
 

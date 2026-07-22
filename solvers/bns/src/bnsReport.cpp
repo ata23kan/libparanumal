@@ -51,15 +51,15 @@ void bns_t::Report(dfloat time, int tstep){
 
     memory<dfloat> Vort(mesh.dim*mesh.Nelements*mesh.Np);
 
-    //compute Q-criterion
-    deviceMemory<dfloat> o_QCrit = platform.reserve<dfloat>(mesh.Nelements*mesh.Np);
-    qcriterionKernel(mesh.Nelements, mesh.o_vgeo, mesh.o_D, o_q, c, o_QCrit);
-    memory<dfloat> QCrit(mesh.Nelements*mesh.Np);
+    // //compute Q-criterion
+    // deviceMemory<dfloat> o_QCrit = platform.reserve<dfloat>(mesh.Nelements*mesh.Np);
+    // qcriterionKernel(mesh.Nelements, mesh.o_vgeo, mesh.o_D, o_q, c, o_QCrit);
+    // memory<dfloat> QCrit(mesh.Nelements*mesh.Np);
 
     // copy data back to host
     o_q.copyTo(q);
     o_Vort.copyTo(Vort);
-    o_QCrit.copyTo(QCrit);
+    // o_QCrit.copyTo(QCrit);
 
     // Copy the new mesh positions from ALE
     mesh.o_x.copyTo(mesh.x);
@@ -78,194 +78,8 @@ void bns_t::Report(dfloat time, int tstep){
     // output field files
     settings.getSetting("OUTPUT FILE NAME", name);
     char fname[BUFSIZ];
-
-    // //Re36000
-    // // Output interval is 0.071429. Tolerance is 0.07142857 / 2.
-    // const dfloat output_tolerance = 0.035714;
-
-    // // Snapshot 1: Start of 5th cycle (t/T = 0)
-    // if(time < (28.571429 + output_tolerance) && time > (28.571429 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    // // Snapshot 2: Quarter of 5th cycle (t/T = 1/4)
-    // if(time < (30.357143 + output_tolerance) && time > (30.357143 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    // // Snapshot 3: Half of 5th cycle (t/T = 2/4)
-    // if(time < (32.142857 + output_tolerance) && time > (32.142857 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    // // Snapshot 4: Three-quarters of 5th cycle (t/T = 3/4)
-    // if(time < (33.928571 + output_tolerance) && time > (33.928571 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    //Re17000
-    //// Output interval is 0.068966. Tolerance is 0.068966 / 2.
-    //const dfloat output_tolerance = 0.034483;
-    //
-    //// Snapshot 1: Start of 5th cycle (t/T = 0)
-    //if(time < (27.586207 + output_tolerance) && time > (27.586207 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    //// Snapshot 2: Quarter of 5th cycle (t/T = 1/4)
-    //if(time < (29.310345 + output_tolerance) && time > (29.310345 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    //// Snapshot 3: Half of 5th cycle (t/T = 2/4)
-    //if(time < (31.034483 + output_tolerance) && time > (31.034483 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    //// Snapshot 4: Three-quarters of 5th cycle (t/T = 3/4)
-    //if(time < (32.758621 + output_tolerance) && time > (32.758621 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    // Re5800
-    // Snapshot 1: Start of 5th cycle (t/T = 0)
-    //if(time < (23.529412 + 1e-05) && time > (23.529412 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-    //
-    //// Snapshot 2: Quarter of 5th cycle (t/T = 1/4)
-    //if(time < (25.000000 + 1e-05) && time > (25.000000 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-    //
-    //// Snapshot 3: Half of 5th cycle (t/T = 2/4)
-    //if(time < (26.470588 + 1e-05) && time > (26.470588 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-    //
-    //// Snapshot 4: Three-quarters of 5th cycle (t/T = 3/4)
-    //if(time < (27.941176 + 1e-05) && time > (27.941176 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    // Re5800 (u_sim = 0.1, Coarse Output: 20 points/cycle)
-    // Target: 9th Period Snapshots
-    const dfloat output_tolerance = 0.147059; 
-    
-    // Snapshot 1: Start of 9th cycle (t = 8.00 * T)
-    if(time < (47.058824 + output_tolerance) && time > (47.058824 - output_tolerance)){
-      sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-      PlotFields(q, QCrit, std::string(fname));
-    }
-
-    // Snapshot 2: Quarter of 9th cycle (t = 8.25 * T)
-    if(time < (48.529412 + output_tolerance) && time > (48.529412 - output_tolerance)){
-      sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-      PlotFields(q, QCrit, std::string(fname));
-    }
-
-    // Snapshot 3: Half of 9th cycle (t = 8.50 * T)
-    if(time < (50.000000 + output_tolerance) && time > (50.000000 - output_tolerance)){
-      sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-      PlotFields(q, QCrit, std::string(fname));
-    }
-
-    // Snapshot 4: Three-quarters of 9th cycle (t = 8.75 * T)
-    if(time < (51.470588 + output_tolerance) && time > (51.470588 - output_tolerance)){
-      sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-      PlotFields(q, QCrit, std::string(fname));
-    }
-
-    // Re 2400
-    // Snapshot 1: Start of 5th cycle (t/T = 0)
-    //if(time < (19.047619 + 1e-05) && time > (19.047619 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    //// Snapshot 2: Quarter of 5th cycle (t/T = 1/4)
-    //if(time < (20.238095 + 1e-05) && time > (20.238095 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    //// Snapshot 3: Half of 5th cycle (t/T = 2/4)
-    //if(time < (21.428571 + 1e-05) && time > (21.428571 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    //// Snapshot 4: Three-quarters of 5th cycle (t/T = 3/4)
-    //if(time < (22.619048 + 1e-05) && time > (22.619048 - 1e-05)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-
-    // // Re2400 (u_sim = 0.1, Coarse Output: 20 points/cycle)
-    // // Target: 9th Period Snapshots
-    // const dfloat output_tolerance = 0.119048; 
-    
-    // // Snapshot 1: Start of 9th cycle (t/T = 0)
-    // if(time < (38.095238 + output_tolerance) && time > (38.095238 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    // // Snapshot 2: Quarter of 9th cycle (t/T = 1/4)
-    // if(time < (39.285714 + output_tolerance) && time > (39.285714 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    // // Snapshot 3: Half of 9th cycle (t/T = 2/4)
-    // if(time < (40.476190 + output_tolerance) && time > (40.476190 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    // // Snapshot 4: Three-quarters of 9th cycle (t/T = 3/4)
-    // if(time < (41.666667 + output_tolerance) && time > (41.666667 - output_tolerance)){
-    //   sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //   PlotFields(q, QCrit, std::string(fname));
-    // }
-
-    //Re720
-    //const dfloat output_tolerance = 0.017857;
-    //// Snapshot 1: Start of 5th cycle (t/T = 0)
-    //if(time < (14.285714 + output_tolerance) && time > (14.285714 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-    //
-    //// Snapshot 2: Quarter of 5th cycle (t/T = 1/4)
-    //if(time < (15.178571 + output_tolerance) && time > (15.178571 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-    //
-    //// Snapshot 3: Half of 5th cycle (t/T = 2/4)
-    //if(time < (16.071429 + output_tolerance) && time > (16.071429 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
-    //
-    //// Snapshot 4: Three-quarters of 5th cycle (t/T = 3/4)
-    //if(time < (16.964286 + output_tolerance) && time > (16.964286 - output_tolerance)){
-    //  sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
-    //  PlotFields(q, QCrit, std::string(fname));
-    //}
+    sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
+    PlotFields(q, Vort, std::string(fname));
       
     if(testCase==2){
       ComputeForces(time);
