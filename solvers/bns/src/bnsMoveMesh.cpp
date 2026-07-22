@@ -113,7 +113,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
     // Create the solution and rhs vectors in every direction
     deviceMemory<dfloat> o_rhsVx = platform.reserve<dfloat>(Ntotal);
     deviceMemory<dfloat> o_vxL   = platform.reserve<dfloat>(Ntotal);
-    deviceMemory<dfloat> o_rhsVy, o_vyL;
+    deviceMemory<dfloat> o_rhsVy, o_vyL, o_rhsVz, o_vzL;
 
     // set solution vector to zero
     platform.linAlg().set(meshN1.Nelements*meshN1.Np*mdsNfields, (dfloat)0.0, o_rhsVx);
@@ -122,7 +122,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
     // Create gather arrays
     deviceMemory<dfloat> o_GrhsVx = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
     deviceMemory<dfloat> o_Gvx    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
-    deviceMemory<dfloat> o_GrhsVy, o_Gvy;
+    deviceMemory<dfloat> o_GrhsVy, o_Gvy, o_GrhsVz, o_Gvz;
 
     if(mdsSolver.deform_laplace){
       o_rhsVy = platform.reserve<dfloat>(Ntotal);
@@ -132,6 +132,16 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
       o_GrhsVy = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
       o_Gvy    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+
+      if(mesh.dim==3){
+        o_rhsVz = platform.reserve<dfloat>(Ntotal);
+        o_vzL   = platform.reserve<dfloat>(Ntotal);
+        platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_rhsVz);
+        platform.linAlg().set(meshN1.Nelements*meshN1.Np*1, (dfloat)0.0, o_vzL);
+
+        o_GrhsVz = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+        o_Gvz    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
+      }
     }
 
     aleRhsKernel(mesh.Nelements,
@@ -149,7 +159,8 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                  meshN1.o_z,
                  mdsSolver.o_mapB,
                  o_rhsVx,
-                 o_rhsVy);
+                 o_rhsVy,
+                 o_rhsVz);
 
     int maxIter = 5000;
     int verbose = 0;
@@ -163,17 +174,24 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
       mdsSolver.ogsMasked.Gather(o_GrhsVy, o_rhsVy, 1, ogs::Add, ogs::Trans);
       mdsSolver.ogsMasked.Gather(o_Gvy, o_vyL, 1, ogs::Add, ogs::NoTrans);
+      if(mesh.dim==3){
+        mdsSolver.ogsMasked.Gather(o_GrhsVz, o_rhsVz, 1, ogs::Add, ogs::Trans);
+        mdsSolver.ogsMasked.Gather(o_Gvz, o_vzL, 1, ogs::Add, ogs::NoTrans);
+      }
 
-      int Nitery;
       Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
-      Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
-      // printf("Total Number of Iterations in x: %d\n", Niter);
-      // printf("Total Number of Iterations in y: %d\n", Nitery);
-
+      int Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
+      if(mesh.dim==3){
+        int Niterz = mdsSolver.Solve(mdsLinearSolver, o_Gvz, o_GrhsVz, mdsTOL, maxIter, verbose);
+      }
       mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, 1, ogs::NoTrans);
       mdsSolver.ogsMasked.Scatter(o_vyL, o_Gvy, 1, ogs::NoTrans);
       o_GrhsVx.free(); o_Gvx.free();
       o_GrhsVy.free(); o_Gvy.free();
+      if(mesh.dim==3){
+        mdsSolver.ogsMasked.Scatter(o_vzL, o_Gvz, 1, ogs::NoTrans);
+        o_GrhsVz.free(); o_Gvz.free();
+      }
 
     } else if(mdsSolver.deform_linElastic){
       Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
@@ -190,7 +208,8 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                 mdsSolver.o_mapB,
                 o_rhsX,
                 o_vxL, 
-                o_vyL); 
+                o_vyL,
+                o_vzL); 
 
     break;
 

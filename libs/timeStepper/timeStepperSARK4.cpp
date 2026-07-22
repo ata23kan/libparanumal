@@ -505,28 +505,28 @@ void sark4::ALEStep(solver_t& solver,
     // t_rk = t + C_rk*_dt
     dfloat currentTime = time + rkC[rk]*_dt;
 
-    // // Compute the RK stage for mesh movement
-    // rkPmlStageKernel(NAle,
-    //                  rk,
-    //                  _dt,
-    //                  o_pmlrkA,
-    //                  o_VX,
-    //                  o_rkrhsX,
-    //                  o_rkVX);
+    // Compute the RK stage for mesh movement
+    rkPmlStageKernel(NAle,
+                     rk,
+                     _dt,
+                     o_pmlrkA,
+                     o_VX,
+                     o_rkrhsX,
+                     o_rkVX);
 
 
-    // solve the mesh velocities rhs = v_M
+    // solve the mesh velocities rhs = v_G
     solver.MoveMesh(o_rkVX, o_rhsX, currentTime);
 
-    // // Update the positions using SARK coefficients
-    // rkPmlUpdateKernel(NAle,
-    //                   rk,
-    //                   _dt,
-    //                   o_pmlrkA,
-    //                   o_VX,
-    //                   o_rhsX,
-    //                   o_rkrhsX,
-    //                   o_rkVX);
+    // Update the positions using SARK coefficients
+    rkPmlUpdateKernel(NAle,
+                      rk,
+                      _dt,
+                      o_pmlrkA,
+                      o_VX,
+                      o_rhsX,
+                      o_rkrhsX,
+                      o_rkVX);
 
     // Update the geometric factors in the stage
     solver.UpdateGeo(o_rkVX);
