@@ -28,6 +28,7 @@ SOFTWARE.
 
 void bns_t::UpdateGeo(deviceMemory<dfloat>& o_Vx){
 
+  timePoint_t startVgeo = GlobalPlatformTime(platform);
   updateVgeoKernel(mesh.NnonPmlElements,
                    mesh.o_nonPmlElements,
                    o_Vx,
@@ -38,11 +39,18 @@ void bns_t::UpdateGeo(deviceMemory<dfloat>& o_Vx){
                    mesh.o_vgeo,
                    mesh.o_ggeo);
 
+  timePoint_t endVgeo = GlobalPlatformTime(platform);
+  time_vgeo += ElapsedTime(startVgeo, endVgeo);
+
+  timePoint_t startSgeo = GlobalPlatformTime(platform);
   updateSgeoKernel(mesh.NnonPmlElements,
                    mesh.o_nonPmlElements,
                    o_Vx,
                    meshN1.o_sgeo,
                    mesh.o_sgeo);
+
+  timePoint_t endSgeo = GlobalPlatformTime(platform);
+  time_sgeo += ElapsedTime(startSgeo, endSgeo);
 
 
 } // end of function UpdateGeo

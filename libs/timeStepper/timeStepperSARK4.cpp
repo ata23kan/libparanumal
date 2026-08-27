@@ -29,6 +29,8 @@ SOFTWARE.
 #include "timeStepper.hpp"
 #include <complex>
 
+#include "timer.hpp"
+
 namespace libp {
 
 namespace TimeStepper {
@@ -478,6 +480,9 @@ void sark4::RunWithAle(solver_t& solver,
 
     allStep++;
   }
+
+  printf("Total mesh-velocity RK stage time: %.4e\n", rk_vx_time);
+  printf("Total RK time: %.4e\n", rk_time);
 }
 
 void sark4::ALEStep(solver_t& solver,
@@ -505,6 +510,7 @@ void sark4::ALEStep(solver_t& solver,
     // t_rk = t + C_rk*_dt
     dfloat currentTime = time + rkC[rk]*_dt;
 
+    timePoint_t start_vx_stage = GlobalPlatformTime(platform);
     // Compute the RK stage for mesh movement
     rkPmlStageKernel(NAle,
                      rk,
@@ -513,11 +519,13 @@ void sark4::ALEStep(solver_t& solver,
                      o_VX,
                      o_rkrhsX,
                      o_rkVX);
-
+    timePoint_t end_vx_stage = GlobalPlatformTime(platform);
+    rk_vx_time += ElapsedTime(start_vx_stage, end_vx_stage);
 
     // solve the mesh velocities rhs = v_G
     solver.MoveMesh(o_rkVX, o_rhsX, currentTime);
 
+    timePoint_t start_vx_step = GlobalPlatformTime(platform);
     // Update the positions using SARK coefficients
     rkPmlUpdateKernel(NAle,
                       rk,
@@ -528,12 +536,16 @@ void sark4::ALEStep(solver_t& solver,
                       o_rkrhsX,
                       o_rkVX);
 
+    timePoint_t end_vx_step = GlobalPlatformTime(platform);
+    rk_vx_time += ElapsedTime(start_vx_step, end_vx_step);
+
     // Update the geometric factors in the stage
     solver.UpdateGeo(o_rkVX);
 
     // Update the interpolation nodes
     solver.UpdateX(o_rkVX);
 
+    timePoint_t start_rk_stage = GlobalPlatformTime(platform);
     //compute RK stage
     // rkq = x_{rk}*q + _dt sum_{i=0}^{rk-1} a_{rk,i}*rhsq_i
     rkStageKernel(Nelements,
@@ -554,6 +566,9 @@ void sark4::ALEStep(solver_t& solver,
                       o_rkpmlq);
     }
 
+    timePoint_t end_rk_stage = GlobalPlatformTime(platform);
+    rk_time += ElapsedTime(start_rk_stage, end_rk_stage);
+
     //evaluate ODE rhs = f(q,t)
     if (o_pmlq.has_value()) {
       solver.rhsf_pml(o_rkq, o_rkpmlq, o_rhsq, o_rhspmlq, currentTime);
@@ -561,6 +576,7 @@ void sark4::ALEStep(solver_t& solver,
       solver.rhsf(o_rkq, o_rhsq, currentTime);
     }
 
+    timePoint_t start_rk_step = GlobalPlatformTime(platform);
     // update solution using Runge-Kutta
     // rkrhsq_rk = rhsq
     // if rk==6
@@ -587,6 +603,9 @@ void sark4::ALEStep(solver_t& solver,
                          o_rkrhspmlq,
                          o_rkpmlq);
     }
+
+    timePoint_t end_rk_step = GlobalPlatformTime(platform);
+    rk_time += ElapsedTime(start_rk_step, end_rk_step);
   }
 }
 

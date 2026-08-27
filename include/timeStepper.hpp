@@ -104,8 +104,8 @@ public:
     platform(_platform),
     comm(_comm),
     N(Nelements*Np*Nfields),
-    // NAle(Nelements*3*2), // -> Hard coded for tris, Nverts=3, Nfields=dim=2 -AA
-    NAle(Nelements*4*3), // -> Hard coded for tets, Nverts=4, Nfields=dim=3 -AA
+    NAle(Nelements*3*2), // -> Hard coded for tris, Nverts=3, Nfields=dim=2 -AA
+    // NAle(Nelements*4*3), // -> Hard coded for tets, Nverts=4, Nfields=dim=3 -AA
     Nhalo(NhaloElements*Np*Nfields),
     Npml(NpmlElements*Np*Npmlfields) {}
 
@@ -342,6 +342,10 @@ protected:
   dfloat invfactor2;
   dfloat facold;
   dfloat sqrtinvNtotal;
+
+  // Timer parameters for performance study
+  dfloat rk_vx_time{0.0};
+  dfloat rk_time{0.0};
 
 
   void Step(solver_t& solver,

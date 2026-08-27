@@ -35,6 +35,8 @@ SOFTWARE.
 #include "linAlg.hpp"
 #include "mds.hpp"
 
+#include "timer.hpp"
+
 #define DBNS LIBP_DIR"/solvers/bns/"
 
 using namespace libp;
@@ -123,6 +125,14 @@ public:
   kernel_t velInterpolationKernel, posInterpolationKernel;
   kernel_t initialPositionKernel;
   kernel_t explicitDeformationKernel;
+
+  // Performance time parameters
+  dfloat time_volume, time_surface, time_cubature, time_meshDeform;
+  dfloat time_volumePml, time_surfacePml, time_cubaturePml;
+  dfloat time_vgeo, time_sgeo, time_updateX;
+  int solver_max_iter;
+  deviceMemory<dfloat> o_wJ0; // Initial Jacobian field for relative deformation calculation
+  kernel_t relativeJacobianKernel;
 
   bns_t() = default;
   bns_t(platform_t &_platform, mesh_t &_mesh,

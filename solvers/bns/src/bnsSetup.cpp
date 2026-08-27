@@ -159,6 +159,9 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   //setup linear algebra module
   platform.linAlg().InitKernels({"innerProd"});
+  
+  // Set for mds performance
+  platform.linAlg().InitKernels({"min", "max"});
 
   /*setup trace halo exchange */
   traceHalo = mesh.HaloTraceSetup(Nfields);
@@ -180,6 +183,13 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   mdsBCType[9] = 2;
   mdsBCType[10] = 2; // Stationary wall boundary for flexible rod
 
+  // Initialize timers
+  time_volume = 0.f, time_surface = 0.f, time_cubature = 0.f, time_meshDeform = 0.f;
+  time_volumePml = 0.f, time_surfacePml = 0.f, time_cubaturePml = 0.f;
+  time_vgeo = 0.f, time_sgeo = 0.f, time_updateX = 0.f;
+
+  solver_max_iter = 0;
+  
   // Build low order mesh for deformation
   meshN1 = mesh.SetupNewDegree(1);
   properties_t kernelInfoN1 = meshN1.props;
@@ -249,6 +259,9 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   o_VX  = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mesh.dim);
   o_VX0 = platform.reserve<dfloat>(meshN1.Np*meshN1.Nelements*mesh.dim);
+
+  o_wJ0 = platform.reserve<dfloat>(mesh.Nelements);
+  o_wJ0.copyFrom(mesh.o_wJ, mesh.Nelements, 0, properties_t("async", true));
 
   // compute samples of q at interpolation nodes
   q.malloc(Nlocal+Nhalo);
@@ -422,6 +435,10 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
     LIBP_FORCE_ABORT("Requested ALE TEST not found.");
   }
 
+  // Relative Jacobian Kernel
+  fileName = oklFilePrefix + "bnsRelativeJacobian" + suffix + oklFileSuffix;
+  kernelName = "relativeJacobian" + suffix;
+  relativeJacobianKernel = platform.buildKernel(fileName, kernelName, kernelInfo);
 
   fileName = oklFilePrefix + "bnsInterpolateDeformation" + suffix + oklFileSuffix;
   kernelName = "interpolateVelocity" + suffix;

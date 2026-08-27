@@ -29,6 +29,7 @@ SOFTWARE.
 
 void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, const dfloat T){
 
+  timePoint_t startMoveMesh = GlobalPlatformTime(platform);
   switch(testCase){
 
   default:
@@ -181,6 +182,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
       Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
       int Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
+      solver_max_iter = Nitery;
       if(mesh.dim==3){
         int Niterz = mdsSolver.Solve(mdsLinearSolver, o_Gvz, o_GrhsVz, mdsTOL, maxIter, verbose);
       }
@@ -192,6 +194,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
         mdsSolver.ogsMasked.Scatter(o_vzL, o_Gvz, 1, ogs::NoTrans);
         o_GrhsVz.free(); o_Gvz.free();
       }
+
 
     } else if(mdsSolver.deform_linElastic){
       Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
@@ -278,4 +281,8 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                          o_meshVelx,
                          o_meshVely,  
                          o_meshVelz);  
+
+  timePoint_t endMoveMesh = GlobalPlatformTime(platform);
+  time_meshDeform += ElapsedTime(startMoveMesh, endMoveMesh);
+
 }

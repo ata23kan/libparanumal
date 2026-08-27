@@ -85,6 +85,17 @@ void bns_t::Run(){
   // timeStepper.RunWithAle(*this, o_q, o_VX, startTime, finalTime);
   timeStepper.RunWithAlePml(*this, o_q, o_VX, o_pmlq, startTime, finalTime);
 
+  printf("Total Volume Kernel time: %.4e\n", time_volume);
+  printf("Total Pml Volume Kernel time: %.4e\n", time_volumePml);
+  printf("Total Surface Kernel time: %.4e\n", time_surface);
+  printf("Total Pml Surface Kernel time: %.4e\n", time_surfacePml);
+  printf("Total Cubature Kernel time: %.4e\n", time_cubature);
+  printf("Total Pml Cubature Kernel time: %.4e\n", time_cubaturePml);
+  printf("Total MoveMesh Kernel time: %.4e\n", time_meshDeform);
+  printf("Total Vgeo Kernel time: %.4e\n", time_vgeo);
+  printf("Total Sgeo Kernel time: %.4e\n", time_sgeo);
+  printf("Total UpdateX Kernel time: %.4e\n", time_updateX);
+
   // output norm of final solution
   {
     //compute q.M*q

@@ -80,7 +80,18 @@ void bns_t::Report(dfloat time, int tstep){
     char fname[BUFSIZ];
     sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
     PlotFields(q, Vort, std::string(fname));
-      
+
+    // Calculate minimum relative Jacobian
+    deviceMemory<dfloat> o_wJRel = platform.reserve<dfloat>(mesh.Nelements);
+    relativeJacobianKernel(mesh.Nelements, mesh.o_wJ, o_wJ0, o_wJRel);
+
+    dfloat min_jac = platform.linAlg().min(mesh.Nelements, o_wJRel, comm);
+    comm.Allreduce(min_jac, Comm::Min);
+    if (comm.rank()==0){
+      printf("Min Relative Jacobian: %lf\n", min_jac);
+      printf("Solver maximum iteration: %d\n", solver_max_iter);
+    }
+    
     if(testCase==2){
       ComputeForces(time);
     }

@@ -24,24 +24,16 @@ SOFTWARE.
 
 */
 
-#include "bns.hpp"
+#define p_blockSize 256
 
-void bns_t::UpdateX(deviceMemory<dfloat>& o_Vx){
+// Compute the relative Jacobian o_wJRel = o_wJ / o_wJ0 for each element/node
+@kernel void relativeJacobianTri2D(const dlong Nelements,
+                                       @restrict const dfloat *  wJ,
+                                       @restrict const dfloat *  wJ0,
+                                       @restrict       dfloat *  wJRel){
 
-  timePoint_t startUpdateX = GlobalPlatformTime(platform);
-
-	posInterpolationKernel(mesh.NnonPmlElements,
-												mesh.o_nonPmlElements,
-												o_IM,
-												o_Vx,
-												meshN1.o_x,
-												meshN1.o_y,
-												meshN1.o_z,
-												mesh.o_x,
-												mesh.o_y,
-												mesh.o_z);
-
-  timePoint_t endUpdateX = GlobalPlatformTime(platform);
-  time_updateX += ElapsedTime(startUpdateX, endUpdateX);
-
-} // end of function UpdateX
+  for(dlong e=0;e<Nelements;++e;@tile(p_blockSize,@outer,@inner)){
+    
+    wJRel[e] = wJ[e]/wJ0[e];
+  }
+}

@@ -95,22 +95,43 @@ void bns_t::rhsf_pml(deviceMemory<dfloat>& o_Q, deviceMemory<dfloat>& o_pmlQ,
   traceHalo.ExchangeStart(o_Q, 1);
 
   // compute volume contribution to bns RHS
+  timePoint_t startVolume = GlobalPlatformTime(platform);
   rhsVolume(mesh.NnonPmlElements, mesh.o_nonPmlElements, o_Q, o_RHS, T);
+  timePoint_t endVolume = GlobalPlatformTime(platform);
+  time_volume += ElapsedTime(startVolume, endVolume);
+
+  timePoint_t startVolumePml = GlobalPlatformTime(platform);
   rhsPmlVolume(mesh.NpmlElements, mesh.o_pmlElements, mesh.o_pmlIds,
-               o_Q, o_pmlQ, o_RHS, o_pmlRHS, T);
+    o_Q, o_pmlQ, o_RHS, o_pmlRHS, T);
+  timePoint_t endVolumePml = GlobalPlatformTime(platform);
+  time_volumePml += ElapsedTime(startVolumePml, endVolumePml);
 
   // compute relaxation terms
+  timePoint_t startRelaxation = GlobalPlatformTime(platform);
   rhsRelaxation(mesh.NnonPmlElements, mesh.o_nonPmlElements, o_Q, o_RHS);
+  timePoint_t endRelaxation = GlobalPlatformTime(platform);
+  time_cubature += ElapsedTime(startRelaxation, endRelaxation);
+
+  timePoint_t startRelaxationPml = GlobalPlatformTime(platform);
   rhsPmlRelaxation(mesh.NpmlElements, mesh.o_pmlElements, mesh.o_pmlIds,
-                   o_Q, o_pmlQ, o_RHS, o_pmlRHS);
+    o_Q, o_pmlQ, o_RHS, o_pmlRHS);
+  timePoint_t endRelaxationPml = GlobalPlatformTime(platform);
+  time_cubaturePml += ElapsedTime(startRelaxationPml, endRelaxationPml);
 
   // complete trace halo exchange
   traceHalo.ExchangeFinish(o_Q, 1);
 
   // compute surface contribution to bns RHS
+  timePoint_t startSurface = GlobalPlatformTime(platform);
   rhsSurface(mesh.NnonPmlElements, mesh.o_nonPmlElements, o_Q, o_RHS, T);
+  timePoint_t endSurface = GlobalPlatformTime(platform);
+  time_surface += ElapsedTime(startSurface, endSurface);
+
+  timePoint_t startSurfacePml = GlobalPlatformTime(platform);
   rhsPmlSurface(mesh.NpmlElements, mesh.o_pmlElements, mesh.o_pmlIds,
-                o_Q, o_pmlQ, o_RHS, o_pmlRHS, T);
+    o_Q, o_pmlQ, o_RHS, o_pmlRHS, T);
+  timePoint_t endSurfacePml = GlobalPlatformTime(platform);
+  time_surfacePml += ElapsedTime(startSurfacePml, endSurfacePml);
 }
 
 
