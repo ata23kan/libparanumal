@@ -104,7 +104,7 @@ LFLAGS=${BNS_CXXFLAGS} ${LIBS}
 DEPS=$(wildcard *.hpp) \
      $(wildcard $(LIBP_INCLUDE_DIR)/*.h) \
      $(wildcard $(LIBP_INCLUDE_DIR)/*.hpp) \
-     $(wildcard $(MDS_DIR)}*.hpp)
+     $(wildcard $(MDS_DIR)/*.hpp)
 
 SRC =$(wildcard src/*.cpp)
 
