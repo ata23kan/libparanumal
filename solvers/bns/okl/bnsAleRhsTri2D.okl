@@ -37,6 +37,7 @@ SOFTWARE.
                         @restrict const  dfloat *  x,
                         @restrict const  dfloat *  y,
                         @restrict const  dfloat *  z,
+                        @restrict const  dfloat *  gamma,
                         @restrict const  int    *  mapB,
                         @restrict dfloat        *  rhsx,
                         @restrict dfloat        *  rhsy,
@@ -150,6 +151,7 @@ SOFTWARE.
                         @restrict const  dfloat *  x,
                         @restrict const  dfloat *  y,
                         @restrict const  dfloat *  z,
+                        @restrict const  dfloat *  gamma,
                         @restrict const  int    *  mapB,
                         @restrict dfloat        *  rhsx,
                         @restrict dfloat        *  rhsy,
@@ -217,8 +219,8 @@ SOFTWARE.
           }
 
         const dlong id = n + e*p_Np;
-        rhsx[id] -= Grr*qrr_x+Grs*qrs_x+Gss*qss_x;
-        rhsy[id] -= Grr*qrr_y+Grs*qrs_y+Gss*qss_y;
+        rhsx[id] -= gamma[e] * (Grr*qrr_x+Grs*qrs_x+Gss*qss_x);
+        rhsy[id] -= gamma[e] * (Grr*qrr_y+Grs*qrs_y+Gss*qss_y);
       }
     }
   }

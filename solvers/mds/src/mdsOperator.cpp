@@ -75,6 +75,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
                     o_MM,
                     static_cast<double>(lambda),
                     static_cast<double>(mu),
+                    o_gamma,
                     o_q,
                     o_AqL);
   }
@@ -96,6 +97,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
                     o_MM,
                     static_cast<double>(lambda),
                     static_cast<double>(mu),
+                    o_gamma,
                     o_q,
                     o_AqL);
   }
@@ -116,6 +118,7 @@ void mds_t::Operator(deviceMemory<double> &o_q, deviceMemory<double> &o_Aq){
                     o_MM,
                     static_cast<double>(lambda),
                     static_cast<double>(mu),
+                    o_gamma,
                     o_q,
                     o_AqL);
   }
@@ -173,6 +176,7 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_MM,
                          static_cast<float>(lambda),
                          static_cast<float>(mu),
+                         o_gamma,
                          o_q,
                          o_AqL);
   }
@@ -193,6 +197,7 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_MM,
                          static_cast<float>(lambda),
                          static_cast<float>(mu),
+                         o_gamma,
                          o_q,
                          o_AqL);
   }
@@ -213,6 +218,7 @@ void mds_t::Operator(deviceMemory<float> &o_q, deviceMemory<float> &o_Aq){
                          o_MM,
                          static_cast<float>(lambda),
                          static_cast<float>(mu),
+                         o_gamma,
                          o_q,
                          o_AqL);
   }

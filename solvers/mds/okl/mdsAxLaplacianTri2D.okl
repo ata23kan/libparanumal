@@ -101,6 +101,7 @@ SOFTWARE.
                                     @restrict const  dfloat *  MM,
                                     const dfloat lambda,
                                     const dfloat mu,
+                                    @restrict const dfloat   * gamma,
                                     @restrict const  dfloat  *  q,
                                     @restrict dfloat  *  Aq){
 
@@ -146,7 +147,7 @@ SOFTWARE.
             }
 
             const dlong id = n + element*p_Np;
-            Aq[id] = Grr*qrr+Grs*qrs+Gss*qss;
+            Aq[id] = gamma[element] * (Grr*qrr+Grs*qrs+Gss*qss);
         }
       }
     }

@@ -158,6 +158,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                  meshN1.o_x,
                  meshN1.o_y,
                  meshN1.o_z,
+                 mdsSolver.o_gamma,
                  mdsSolver.o_mapB,
                  o_rhsVx,
                  o_rhsVy,

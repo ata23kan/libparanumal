@@ -165,6 +165,7 @@ void mds_t::Run(){
               mesh.o_sM,
               lambda,
               mu,
+              o_gamma,
               mesh.o_x,
               mesh.o_y,
               mesh.o_z,

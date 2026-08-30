@@ -64,6 +64,9 @@ public:
   dfloat mu;
   dfloat tau;
 
+  memory<dfloat> gamma;
+  deviceMemory<dfloat> o_gamma;
+
   int deform_laplace, deform_linElastic;
 
   ogs::halo_t traceHalo;
@@ -122,6 +125,9 @@ public:
              const int _NBCTypes, const memory<int> _BCType);
 
   void BoundarySetup();
+
+  void SetupDiffusionCoefficient();
+  void SetupDiffusionCoefficientTri2D();
 
   void Run();
 
