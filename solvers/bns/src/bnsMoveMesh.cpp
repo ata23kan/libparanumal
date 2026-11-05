@@ -27,6 +27,23 @@ SOFTWARE.
 #include "bns.hpp"
 #define PI 3.14159265
 
+/* Skip a mesh-velocity solve whose gathered right-hand side is exactly zero:
+     1 -> compute ||b|| first; if it is 0.0 the solution of the SPD system with
+          homogeneous Dirichlet data is exactly 0 (o_Gv* is already zeroed), so
+          the solver (and its initial-guess update) is not called at all
+     0 -> always call the solver (previous behaviour)                         */
+#define BNS_SKIP_ZERO_RHS_SOLVE 0
+
+static int MdsSolveNeeded(platform_t& platform, comm_t comm,
+                          const dlong N, deviceMemory<dfloat>& o_b){
+#if BNS_SKIP_ZERO_RHS_SOLVE
+  platform.linAlg().InitKernels({"norm2"});
+  return platform.linAlg().norm2(N, o_b, comm) != 0.0;
+#else
+  return 1;
+#endif
+}
+
 /* Charge the time since lap to t and restart lap (see [MOVEMESH TIMING]). */
 void bns_t::MoveMeshLap(double& t, timePoint_t& lap){
   if (!moveMeshTiming) return;
@@ -180,24 +197,45 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
 
     // Gather - Solve - Scatter
+    //
+    // NOTE: the solution vectors o_Gv* are NOT gathered from o_v*L any more.
+    // linearSolver_t::Solve() calls ig->FormInitialGuess(o_x, o_rhs) first,
+    // which overwrites the whole vector, so gathering a guess here would be
+    // dead work. We only zero the buffers (reserve() hands back pool memory,
+    // and the halo region is filled by gHalo.Exchange inside mds_t::Operator).
+    const dlong mdsNtot = mdsSolver.Ndofs+mdsSolver.Nhalo;
+
     mdsSolver.ogsMasked.Gather(o_GrhsVx, o_rhsVx, mdsNfields, ogs::Add, ogs::Trans);
-    mdsSolver.ogsMasked.Gather(o_Gvx, o_vxL, mdsNfields, ogs::Add, ogs::NoTrans);
+    platform.linAlg().set(mdsNtot, (dfloat)0.0, o_Gvx);
 
     if(mdsSolver.deform_laplace){
 
       mdsSolver.ogsMasked.Gather(o_GrhsVy, o_rhsVy, 1, ogs::Add, ogs::Trans);
-      mdsSolver.ogsMasked.Gather(o_Gvy, o_vyL, 1, ogs::Add, ogs::NoTrans);
+      platform.linAlg().set(mdsNtot, (dfloat)0.0, o_Gvy);
       if(mesh.dim==3){
         mdsSolver.ogsMasked.Gather(o_GrhsVz, o_rhsVz, 1, ogs::Add, ogs::Trans);
-        mdsSolver.ogsMasked.Gather(o_Gvz, o_vzL, 1, ogs::Add, ogs::NoTrans);
+        platform.linAlg().set(mdsNtot, (dfloat)0.0, o_Gvz);
       }
       MoveMeshLap(time_mmGather, lap);
 
-      Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
-      int Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
-      solver_max_iter = Nitery;
+      // One solver object (and therefore one initial-guess history) per
+      // coordinate direction.
+      // A skipped solve leaves o_Gv* at zero and counts as 0 iterations.
+      Niter = 0;
+      if (MdsSolveNeeded(platform, comm, mdsSolver.Ndofs, o_GrhsVx))
+        Niter = mdsSolver.Solve(mdsLinearSolvers[0],
+                                o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      int Nitery = 0;
+      if (MdsSolveNeeded(platform, comm, mdsSolver.Ndofs, o_GrhsVy))
+        Nitery = mdsSolver.Solve(mdsLinearSolvers[1],
+                                 o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
+      solver_max_iter = std::max(Niter, Nitery);
       if(mesh.dim==3){
-        int Niterz = mdsSolver.Solve(mdsLinearSolver, o_Gvz, o_GrhsVz, mdsTOL, maxIter, verbose);
+        int Niterz = 0;
+        if (MdsSolveNeeded(platform, comm, mdsSolver.Ndofs, o_GrhsVz))
+          Niterz = mdsSolver.Solve(mdsLinearSolvers[2],
+                                   o_Gvz, o_GrhsVz, mdsTOL, maxIter, verbose);
+        solver_max_iter = std::max(solver_max_iter, Niterz);
       }
       MoveMeshLap(time_mmSolve, lap);
 
@@ -214,11 +252,16 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
     } else if(mdsSolver.deform_linElastic){
       MoveMeshLap(time_mmGather, lap);
 
-      Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      Niter = 0;
+      if (MdsSolveNeeded(platform, comm, mdsSolver.Ndofs, o_GrhsVx))
+        Niter = mdsSolver.Solve(mdsLinearSolvers[0],
+                                o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      solver_max_iter = Niter;
       MoveMeshLap(time_mmSolve, lap);
+
       // printf("Total Number of Iterations: %d\n", Niter);
       mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, mdsNfields, ogs::NoTrans);
-      o_GrhsVx.free(); o_Gvx.free();      
+      o_GrhsVx.free(); o_Gvx.free();
     }
     MoveMeshLap(time_mmScatter, lap);
 

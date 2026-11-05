@@ -85,10 +85,30 @@ void mdsAddSettings(settings_t& settings,
                       "Preconditioning Strategy",
                       {"NONE", "JACOBI", "PARALMOND"});
 
+  settings.newSetting(prefix+"SOLVER TOLERANCE",
+                      "1.0e-8",
+                      "Residual tolerance for the mesh deformation linear solve");
+
   settings.newSetting(prefix+"VERBOSE",
                       "FALSE",
                       "Enable verbose output",
                       {"TRUE", "FALSE"});
+
+  settings.newSetting(prefix+"LINEAR SOLVER TIMING",
+                      "FALSE",
+                      "Time each phase of the linear solve (adds device syncs; profiling only)",
+                      {"TRUE", "FALSE"});
+
+  /* Registers:
+       <prefix>INITIAL GUESS STRATEGY            LAST | ZERO | CLASSIC | QR | EXTRAP
+       <prefix>INITIAL GUESS HISTORY SPACE DIMENSION
+       <prefix>INITIAL GUESS EXTRAP DEGREE
+       <prefix>INITIAL GUESS EXTRAP COEFFS METHOD
+     InitialGuess::AddSettings defaults the strategy to LAST; keep ZERO as the
+     mds default so that existing .rc files behave exactly as before and reuse
+     has to be opted into explicitly. */
+  InitialGuess::AddSettings(settings, prefix);
+  settings.changeSetting(prefix+"INITIAL GUESS STRATEGY", "ZERO");
 }
 
 void mdsSettings_t::report() {
@@ -100,6 +120,18 @@ void mdsSettings_t::report() {
     reportSetting("LAMBDA");
     reportSetting("DISCRETIZATION");
     reportSetting("LINEAR SOLVER");
+    reportSetting("LINEAR SOLVER STOPPING CRITERION");
+    reportSetting("SOLVER TOLERANCE");
+    reportSetting("LINEAR SOLVER TIMING");
+    reportSetting("INITIAL GUESS STRATEGY");
+    if (!compareSetting("INITIAL GUESS STRATEGY","ZERO") &&
+        !compareSetting("INITIAL GUESS STRATEGY","LAST")) {
+      reportSetting("INITIAL GUESS HISTORY SPACE DIMENSION");
+      if (compareSetting("INITIAL GUESS STRATEGY","EXTRAP")) {
+        reportSetting("INITIAL GUESS EXTRAP DEGREE");
+        reportSetting("INITIAL GUESS EXTRAP COEFFS METHOD");
+      }
+    }
     reportSetting("PRECONDITIONER");
 
     if (compareSetting("PRECONDITIONER","PARALMOND"))

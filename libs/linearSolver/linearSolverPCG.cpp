@@ -67,6 +67,10 @@ int pcg<T>::Solve(operator_t& linearOperator, operator_t& precon,
   T rdotr0 = 0.0;
   T TOL = 0.0;
 
+  // optional phase timers, see [LINEAR SOLVER TIMING]
+  timePoint_t lap;
+  if (timing) lap = PlatformTime(platform);
+
   deviceMemory<pfloat> o_pfloat_r;
   deviceMemory<pfloat> o_pfloat_z;
 
@@ -88,21 +92,26 @@ int pcg<T>::Solve(operator_t& linearOperator, operator_t& precon,
   deviceMemory<T> o_p  = platform.reserve<T>(Ntotal);
   deviceMemory<T> o_z  = platform.reserve<T>(Ntotal);
   deviceMemory<T> o_Ap = platform.reserve<T>(Ntotal);
+  TimeLap(platform, timing, TIME_RESERVE, lap);
 
   // Comput norm of RHS (for stopping tolerance).
   if (settings.compareSetting("LINEAR SOLVER STOPPING CRITERION", "ABS/REL-RHS-2NORM")) {
     T normb = linAlg.norm2(N, o_r, comm);
     TOL = std::max(tol*tol*normb*normb, tol*tol);
+    TimeLap(platform, timing, TIME_DOT, lap);
   }
 
   // compute A*x
   linearOperator.Operator(o_x, o_Ap);
+  TimeLap(platform, timing, TIME_AX0, lap);
 
   // subtract r = r - A*x
   linAlg.axpy(N, (T)-1.f, o_Ap, (T)1.f, o_r);
+  TimeLap(platform, timing, TIME_AXPY, lap);
 
   rdotr0 = linAlg.norm2(N, o_r, comm);
   rdotr0 = rdotr0*rdotr0;
+  TimeLap(platform, timing, TIME_DOT, lap);
 
   if (settings.compareSetting("LINEAR SOLVER STOPPING CRITERION", "ABS/REL-INITRESID")) {
     TOL = std::max(tol*tol*rdotr0,tol*tol);
@@ -128,6 +137,7 @@ int pcg<T>::Solve(operator_t& linearOperator, operator_t& precon,
       precon.Operator(o_pfloat_r, o_pfloat_z);
       linAlg.p2d(N, o_pfloat_z, o_z);
     }
+    TimeLap(platform, timing, TIME_PRECON, lap);
 
     // r.z
     rdotz2 = rdotz1;
@@ -143,15 +153,19 @@ int pcg<T>::Solve(operator_t& linearOperator, operator_t& precon,
     } else {
       beta = (iter==0) ? 0.0 : rdotz1/rdotz2;
     }
+    TimeLap(platform, timing, TIME_DOT, lap);
 
     // p = z + beta*p
     linAlg.axpy(N, (T)1.f, o_z, beta, o_p);
+    TimeLap(platform, timing, TIME_AXPY, lap);
 
     // A*p
     linearOperator.Operator(o_p, o_Ap);
+    TimeLap(platform, timing, TIME_AP, lap);
 
     // p.Ap
     pAp =  linAlg.innerProd(N, o_p, o_Ap, comm);
+    TimeLap(platform, timing, TIME_DOT, lap);
 
     alpha = rdotz1/pAp;
 
@@ -159,6 +173,7 @@ int pcg<T>::Solve(operator_t& linearOperator, operator_t& precon,
     //  r <= r - alpha*A*p
     //  dot(r,r)
     rdotr0 = UpdatePCG(alpha, o_p, o_Ap, o_x, o_r);
+    TimeLap(platform, timing, TIME_UPDATE, lap);
 
     if (verbose&&(rank==0)) {
       if(rdotr0<0)

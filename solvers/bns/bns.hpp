@@ -110,7 +110,14 @@ public:
   // Mesh deformation for ALE
   mdsSettings_t mdsSettings;
   mds_t mdsSolver;
-  linearSolver_t<dfloat> mdsLinearSolver;
+
+  /* One linear solver object per coordinate direction (one in total for
+     LINEARELASTIC). They share the mds_t operator and preconditioner but each
+     carries its own initial-guess history, so the x-solve is never started
+     from a y-solution.                                                       */
+  memory<linearSolver_t<dfloat>> mdsLinearSolvers;
+  int mdsNdirs;
+
   dfloat mdsTOL, mdsLambda, mdsMu;
   int mdsNfields, Niter;
   memory<dfloat> mapB;  // boundary flag of face nodes

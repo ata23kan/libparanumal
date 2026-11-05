@@ -91,32 +91,14 @@ ABS/REL-RHS-2NORM
 
 ############# Initial guess ###############
 
-# ZERO    - always start from 0 (the previous hard-wired behaviour)
-# LAST    - start from the previous solution of this (RK stage, direction)
-# CLASSIC - Fischer (1998) projection over a history of previous solutions
-# QR      - rolling-QR variant of the same projection
-# EXTRAP  - polynomial extrapolation in time over previous solutions
-
 [MDS INITIAL GUESS STRATEGY]
 LAST
-#ZERO
-#QR
-#CLASSIC
-#EXTRAP
 
-# Required (>0) for CLASSIC, QR and EXTRAP; unused by ZERO and LAST.
-# Costs Ndofs*dim dfloats per (stage,direction) solver -- twice that for
-# CLASSIC/QR, which store both a RHS basis and a solution basis.
-[MDS INITIAL GUESS HISTORY SPACE DIMENSION]
-10
+[MDS LINEAR SOLVER TIMING]
+FALSE
 
-# EXTRAP only
-[MDS INITIAL GUESS EXTRAP DEGREE]
-3
-
-# EXTRAP only: MINNORM or CPQR
-[MDS INITIAL GUESS EXTRAP COEFFS METHOD]
-MINNORM
+[MOVEMESH TIMING]
+FALSE
 
 ###########################################
 

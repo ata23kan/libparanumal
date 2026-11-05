@@ -32,6 +32,7 @@ SOFTWARE.
 #include "solver.hpp"
 #include "precon.hpp"
 #include "initialGuess.hpp"
+#include "timer.hpp"
 
 namespace libp {
 
@@ -81,6 +82,35 @@ extern template class linearSolver_t<float>;
 
 namespace LinearSolver {
 
+/* Optional phase timers, switched on by [LINEAR SOLVER TIMING] TRUE.
+   Every phase ends with a device sync, so the phases add up to the solve time
+   but the solve itself gets slower: use for profiling runs only. The totals
+   are summed over every solver object in the process (e.g. bns's
+   per-stage, per-direction mesh-velocity solvers). Only pcg times its
+   internal phases; the initial-guess phases apply to every solver.          */
+enum {
+  TIME_IG_FORM=0, // initial guess: FormInitialGuess
+  TIME_RESERVE,   // memory-pool reservations
+  TIME_AX0,       // A*x for the initial residual
+  TIME_AXPY,      // r = b - A*x and p = z + beta*p
+  TIME_PRECON,    // z = M^{-1} r (including d2p/p2d)
+  TIME_DOT,       // norms and inner products: kernel + copy to host + Allreduce
+  TIME_AP,        // A*p
+  TIME_UPDATE,    // UpdatePCG: x += alpha p, r -= alpha Ap, r.r (+ Allreduce)
+  TIME_IG_UPDATE, // initial guess: Update
+  NTIMES
+};
+
+extern double    solveTime[NTIMES];
+extern long long solveCalls[NTIMES];
+extern long long solveNsolves, solveNiterations;
+
+/* Charge the time since lap to phase id and restart lap. No-op if !timing. */
+void TimeLap(platform_t& platform, const int timing, const int id, timePoint_t& lap);
+
+/* Print the phase totals (max over the ranks of comm) on rank 0. */
+void PrintSolveTimes(comm_t comm);
+
 //virtual base linear solver class
 class linearSolverBase_t {
 public:
@@ -91,10 +121,15 @@ public:
   dlong N;
   dlong Nhalo;
 
+  int timing;
+
   linearSolverBase_t(dlong _N, dlong _Nhalo,
                  platform_t& _platform, settings_t& _settings, comm_t _comm):
     platform(_platform), settings(_settings), comm(_comm),
-    N(_N), Nhalo(_Nhalo) {}
+    N(_N), Nhalo(_Nhalo) {
+    timing = settings.hasSetting("LINEAR SOLVER TIMING")
+          && settings.compareSetting("LINEAR SOLVER TIMING", "TRUE");
+  }
 
   virtual int Solve(operator_t& linearOperator, operator_t& precon,
 	    deviceMemory<float>& o_x, deviceMemory<float>& o_rhs,

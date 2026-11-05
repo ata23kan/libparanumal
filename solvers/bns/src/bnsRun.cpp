@@ -115,6 +115,9 @@ void bns_t::Run(){
     }
   }
 
+  if (mdsSettings.compareSetting("LINEAR SOLVER TIMING", "TRUE"))
+    LinearSolver::PrintSolveTimes(mesh.comm);
+
   // output norm of final solution
   {
     //compute q.M*q

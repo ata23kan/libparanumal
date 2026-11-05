@@ -219,35 +219,74 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   dlong mdsNLocal = mdsSolver.Ndofs;
   dlong mdsNhalo = mdsSolver.Nhalo;
 
-  if (mdsSettings.compareSetting("LINEAR SOLVER","NBPCG")){
-    mdsLinearSolver.Setup<LinearSolver::nbpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
-  } else if (mdsSettings.compareSetting("LINEAR SOLVER","NBFPCG")){
-    mdsLinearSolver.Setup<LinearSolver::nbfpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
-  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PCG")){
-    mdsLinearSolver.Setup<LinearSolver::pcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
-  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PGMRES")){
-    mdsLinearSolver.Setup<LinearSolver::pgmres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
-  } else if (mdsSettings.compareSetting("LINEAR SOLVER","PMINRES")){
-    mdsLinearSolver.Setup<LinearSolver::pminres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+  /* LAPLACIAN solves one scalar system per coordinate direction;
+     LINEARELASTIC solves one coupled system for all of them.                 */
+  mdsNdirs = mdsSolver.deform_laplace ? mesh.dim : 1;
+
+  mdsLinearSolvers.malloc(mdsNdirs);
+
+  /* Guard: the history-based strategies allocate Ntotal*maxDim on the device in
+     their constructor, and the library default for the dimension is -1.       */
+  const bool mdsHistoryStrategy =
+       mdsSettings.compareSetting("INITIAL GUESS STRATEGY","CLASSIC")
+    || mdsSettings.compareSetting("INITIAL GUESS STRATEGY","QR")
+    || mdsSettings.compareSetting("INITIAL GUESS STRATEGY","EXTRAP");
+  if (mdsHistoryStrategy) {
+    int mdsHistDim = -1;
+    mdsSettings.getSetting("INITIAL GUESS HISTORY SPACE DIMENSION", mdsHistDim);
+    LIBP_ABORT("[MDS INITIAL GUESS HISTORY SPACE DIMENSION] must be >0 when "
+               "[MDS INITIAL GUESS STRATEGY] is CLASSIC, QR or EXTRAP",
+               mdsHistDim < 1);
   }
 
-  //Solver tolerances
-  if (sizeof(dfloat)==sizeof(double)) {
-    mdsTOL = 1.0E-3;
-  } else {
-    mdsTOL = 1.0E-3;
+  for (int n=0;n<mdsNdirs;++n) {
+    linearSolver_t<dfloat>& ls = mdsLinearSolvers[n];
+
+    if (mdsSettings.compareSetting("LINEAR SOLVER","NBPCG")){
+      ls.Setup<LinearSolver::nbpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("LINEAR SOLVER","NBFPCG")){
+      ls.Setup<LinearSolver::nbfpcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("LINEAR SOLVER","PCG")){
+      ls.Setup<LinearSolver::pcg<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("LINEAR SOLVER","PGMRES")){
+      ls.Setup<LinearSolver::pgmres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("LINEAR SOLVER","PMINRES")){
+      ls.Setup<LinearSolver::pminres<dfloat> >(mdsNLocal, mdsNhalo, platform, mdsSettings, comm);
+    } else {
+      LIBP_FORCE_ABORT("Unknown [MDS LINEAR SOLVER] requested");
+    }
+
+    /* Replace the library default (InitialGuess::Zero, installed by Setup)
+       with whatever [MDS INITIAL GUESS STRATEGY] asks for. Each solver object
+       gets its own strategy object, hence its own history. */
+    if (mdsSettings.compareSetting("INITIAL GUESS STRATEGY","ZERO")){
+      ls.SetupInitialGuess<InitialGuess::Zero<dfloat> >(mdsNLocal, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("INITIAL GUESS STRATEGY","LAST")){
+      ls.SetupInitialGuess<InitialGuess::Last<dfloat> >(mdsNLocal, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("INITIAL GUESS STRATEGY","CLASSIC")){
+      ls.SetupInitialGuess<InitialGuess::ClassicProjection<dfloat> >(mdsNLocal, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("INITIAL GUESS STRATEGY","QR")){
+      ls.SetupInitialGuess<InitialGuess::RollingQRProjection<dfloat> >(mdsNLocal, platform, mdsSettings, comm);
+    } else if (mdsSettings.compareSetting("INITIAL GUESS STRATEGY","EXTRAP")){
+      ls.SetupInitialGuess<InitialGuess::Extrap<dfloat> >(mdsNLocal, platform, mdsSettings, comm);
+    } else {
+      LIBP_FORCE_ABORT("Unknown [MDS INITIAL GUESS STRATEGY] requested");
+    }
+  }
+
+  //Solver tolerance
+  mdsSettings.getSetting("SOLVER TOLERANCE", mdsTOL);
+
+  if (mesh.rank==0) {
+    printf("MDS: %d linear solver(s) (one per direction), initial guess ", mdsNdirs);
+    std::string igName;
+    mdsSettings.getSetting("INITIAL GUESS STRATEGY", igName);
+    printf("%s, tol %.3e\n", igName.c_str(), mdsTOL);
   }
 
   // Setup ALE velocity
   dlong NlocalAle = mesh.Nelements*mesh.Np;
   dlong NhaloAle = mesh.totalHaloPairs*mesh.Np;
-
-  // printf("Nelements: %d\n", mesh.Nelements);
-  // printf("Nelements N1: %d\n", meshN1.Nelements);
-  // printf("nnonpmlNelements: %d\n", mesh.NnonPmlElements);
-  // printf("nnonpmlNelements N1: %d\n", meshN1.NnonPmlElements);
-  // printf("npmlNelements: %d\n", mesh.NpmlElements);
-  // std::exit(EXIT_SUCCESS);
 
   // mesh velocity at the interpolation nodes
   meshVelx.calloc(NlocalAle+NhaloAle);

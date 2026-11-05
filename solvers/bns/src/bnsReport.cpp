@@ -41,7 +41,60 @@ void bns_t::Report(dfloat time, int tstep){
   o_Mq.free();
 
   if(mesh.rank==0)
-    printf("%5.2f (%d), %5.4f (time, timestep, norm)\n", time, tstep, norm2);
+    printf("%5.2f (%d), %18.12e (time, timestep, norm)\n", time, tstep, norm2);
+
+  /* ------------------------------------------------------------------ *
+   * Solver diagnostics.
+   *
+   * These used to live inside the OUTPUT TO FILE branch, which forced a
+   * choice between measuring the solver and observing it: switching VTU
+   * output off to get clean timings also switched off the minimum relative
+   * Jacobian, the iteration count and the force history. They are cheap
+   * (one small kernel plus one reduction) so they now run on every Report
+   * call regardless of whether fields are written.
+   *
+   * time_meshDeform is cumulative, so consecutive rows of the CSV give the
+   * mesh-deformation cost over each reporting interval rather than only the
+   * single end-of-run total printed by bns_t::Run.
+   * ------------------------------------------------------------------ */
+  {
+    static int diagHeader = 1;
+
+    deviceMemory<dfloat> o_wJRel = platform.reserve<dfloat>(mesh.Nelements);
+    relativeJacobianKernel(mesh.Nelements, mesh.o_wJ, o_wJ0, o_wJRel);
+
+    dfloat min_jac = platform.linAlg().min(mesh.Nelements, o_wJRel, comm);
+    comm.Allreduce(min_jac, Comm::Min);
+    o_wJRel.free();
+
+    if (comm.rank()==0){
+      printf("Min Relative Jacobian: %lf\n", min_jac);
+      printf("Solver maximum iteration: %d\n", solver_max_iter);
+
+      std::string diagName;
+      settings.getSetting("OUTPUT FILE NAME", diagName);
+      char dname[BUFSIZ];
+      sprintf(dname, "%s_diagnostics.csv", diagName.c_str());
+
+      FILE *dfp = fopen(dname, diagHeader ? "w" : "a");
+      if (dfp) {
+        if (diagHeader) {
+          fprintf(dfp, "time,tstep,norm2,minRelJac,mdsIter,timeMeshDeformCumulative\n");
+          diagHeader = 0;
+        }
+        fprintf(dfp, "%.8e,%d,%.12e,%.12e,%d,%.8e\n",
+                time, tstep, norm2, min_jac, solver_max_iter, time_meshDeform);
+        fclose(dfp);
+      }
+    }
+  }
+
+  if(testCase==2){
+    ComputeForces(time);
+  }
+  if(testCase==5){
+    ComputeForces(time);
+  }
 
   if (settings.compareSetting("OUTPUT TO FILE","TRUE")) {
 
@@ -81,24 +134,9 @@ void bns_t::Report(dfloat time, int tstep){
     sprintf(fname, "%s_%04d_%04d.vtu", name.c_str(), mesh.rank, frame++);
     PlotFields(q, Vort, std::string(fname));
 
-    // Calculate minimum relative Jacobian
-    deviceMemory<dfloat> o_wJRel = platform.reserve<dfloat>(mesh.Nelements);
-    relativeJacobianKernel(mesh.Nelements, mesh.o_wJ, o_wJ0, o_wJRel);
+    /* minimum relative Jacobian, iteration count and ComputeForces moved
+       above -- they are diagnostics, not field output. */
 
-    dfloat min_jac = platform.linAlg().min(mesh.Nelements, o_wJRel, comm);
-    comm.Allreduce(min_jac, Comm::Min);
-    if (comm.rank()==0){
-      printf("Min Relative Jacobian: %lf\n", min_jac);
-      printf("Solver maximum iteration: %d\n", solver_max_iter);
-    }
-    
-    if(testCase==2){
-      ComputeForces(time);
-    }
-    if(testCase==5){
-      ComputeForces(time);
-    }
-    
     if(testCase==1){
       char fname2[BUFSIZ];
       sprintf(fname2, "%s_error_%04d_%04d.vtu", name.c_str(), mesh.rank, error_frame++);
