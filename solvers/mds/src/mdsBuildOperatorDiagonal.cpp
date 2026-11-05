@@ -57,12 +57,15 @@ void mds_t::BuildOperatorDiagonalLaplacianTri2D(memory<dfloat>& A) {
     dfloat Grs = mesh.ggeo[gbase + mesh.G01ID];
     dfloat Gss = mesh.ggeo[gbase + mesh.G11ID];
 
+    // variable diffusion coefficient
+    const dfloat gammaElement = gamma[eM];
+
     /* start with stiffness matrix  */
     for(int n=0;n<mesh.Np;++n){
       if (mapB[n+eM*mesh.Np]!=1) { //dont fill rows for masked nodes
-        A[eM*mesh.Np+n]  = Grr*mesh.Srr[n+n*mesh.Np];
-        A[eM*mesh.Np+n] += Grs*mesh.Srs[n+n*mesh.Np];
-        A[eM*mesh.Np+n] += Gss*mesh.Sss[n+n*mesh.Np];
+        A[eM*mesh.Np+n]  = gammaElement*Grr*mesh.Srr[n+n*mesh.Np];
+        A[eM*mesh.Np+n] += gammaElement*Grs*mesh.Srs[n+n*mesh.Np];
+        A[eM*mesh.Np+n] += gammaElement*Gss*mesh.Sss[n+n*mesh.Np];
       } else {
         A[eM*mesh.Np+n] = 1; //just put a 1 so A is invertable
       }
@@ -81,15 +84,18 @@ void mds_t::BuildOperatorDiagonalLaplacianTet3D(memory<dfloat>& A) {
     dfloat Gst = mesh.ggeo[gbase + mesh.G12ID];
     dfloat Gtt = mesh.ggeo[gbase + mesh.G22ID];
 
+    // variable diffusion coefficient
+    const dfloat gammaElement = gamma[eM];
+
     /* start with stiffness matrix  */
     for(int n=0;n<mesh.Np;++n){
       if (mapB[n+eM*mesh.Np]!=1) { //dont fill rows for masked nodes
-        A[eM*mesh.Np+n]  = Grr*mesh.Srr[n+n*mesh.Np];
-        A[eM*mesh.Np+n] += Grs*mesh.Srs[n+n*mesh.Np];
-        A[eM*mesh.Np+n] += Grt*mesh.Srt[n+n*mesh.Np];
-        A[eM*mesh.Np+n] += Gss*mesh.Sss[n+n*mesh.Np];
-        A[eM*mesh.Np+n] += Gst*mesh.Sst[n+n*mesh.Np];
-        A[eM*mesh.Np+n] += Gtt*mesh.Stt[n+n*mesh.Np];
+        A[eM*mesh.Np+n]  = gammaElement*Grr*mesh.Srr[n+n*mesh.Np];
+        A[eM*mesh.Np+n] += gammaElement*Grs*mesh.Srs[n+n*mesh.Np];
+        A[eM*mesh.Np+n] += gammaElement*Grt*mesh.Srt[n+n*mesh.Np];
+        A[eM*mesh.Np+n] += gammaElement*Gss*mesh.Sss[n+n*mesh.Np];
+        A[eM*mesh.Np+n] += gammaElement*Gst*mesh.Sst[n+n*mesh.Np];
+        A[eM*mesh.Np+n] += gammaElement*Gtt*mesh.Stt[n+n*mesh.Np];
       } else {
         A[eM*mesh.Np+n] = 1; //just put a 1 so A is invertable
       }

@@ -92,7 +92,7 @@ void mds_t::BuildOperatorMatrixLaplacianTri2D(parAlmond::parCOO& A) {
     dfloat Grr = mesh.ggeo[e*mesh.Nggeo + mesh.G00ID];
     dfloat Grs = mesh.ggeo[e*mesh.Nggeo + mesh.G01ID];
     dfloat Gss = mesh.ggeo[e*mesh.Nggeo + mesh.G11ID];
-    // dfloat J   = mesh.wJ[e];
+    const dfloat gammaElement = gamma[e];
 
     for (int n=0;n<mesh.Np;n++) {
       if (maskedGlobalNumbering[e*mesh.Np + n]<0) continue; //skip masked nodes
@@ -101,10 +101,9 @@ void mds_t::BuildOperatorMatrixLaplacianTri2D(parAlmond::parCOO& A) {
 
         dfloat val = 0.;
 
-        val += Grr*Srr[m+n*mesh.Np];
-        val += Grs*Srs[m+n*mesh.Np];
-        val += Gss*Sss[m+n*mesh.Np];
-        // val += J*lambda*MM[m+n*mesh.Np];
+        val += gammaElement * Grr*Srr[m+n*mesh.Np];
+        val += gammaElement * Grs*Srs[m+n*mesh.Np];
+        val += gammaElement * Gss*Sss[m+n*mesh.Np];
 
         dfloat nonZeroThreshold = 1e-7;
         if (fabs(val)>nonZeroThreshold) {

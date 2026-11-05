@@ -49,17 +49,6 @@ SOFTWARE.
   *(s22) = 0.0;                           \
 }
 
-// // Initial conditions
-// #define bnsInitialConditions2D(c, nu, t, x, y, r, u, v, s11, s12, s22) \
-// {                                         \
-//   *(r) = 1 + exp(-3*(x*x+y*y));           \
-//   *(u) = exp(-3*(x*x+y*y));               \
-//   *(v) = exp(-3*(x*x+y*y));               \
-//   *(s11) = 0.0;                           \
-//   *(s12) = 0.0;                           \
-//   *(s22) = 0.0;                           \
-// }
-
 // Body force
 #define bnsBodyForce2D(c, nu, t, x, y, r, u, v, fx, fy) \
 {                                                   \
@@ -105,6 +94,45 @@ SOFTWARE.
   }                                    \
 }
 
+// Boundary conditions
+/* wall 1, inflow 2, outflow 3, x-slip 4, y-slip 5 */
+#define bnsAleBoundaryConditions2D(bc, c, nu, \
+                                t, x, y, nx, ny, \
+                                mVx, mVy, \
+                                rM, uM, vM, s11M, s12M, s22M, \
+                                rB, uB, vB, s11B, s12B, s22B) \
+{                                      \
+  if(bc==1||bc==10){                           \
+    *(rB) = rM;                        \
+    *(uB) = mVx;                       \
+    *(vB) = mVy;                       \
+    *(s11B) = 0.0;                     \
+    *(s12B) = 0.0;                     \
+    *(s22B) = 0.0;                     \
+  } else if(bc==2){                    \
+    *(rB) = RBAR;                      \
+    *(uB) = UBAR;                      \
+    *(vB) = VBAR;                      \
+    *(s11B) = 0.0;                     \
+    *(s12B) = 0.0;                     \
+    *(s22B) = 0.0;                     \
+  } else if(bc==3){                    \
+    *(rB) = RBAR;                      \
+    *(uB) = uM;                        \
+    *(vB) = vM;                        \
+    *(s11B) = s11M;                    \
+    *(s12B) = s12M;                    \
+    *(s22B) = s22M;                    \
+  } else if(bc==4||bc==5){             \
+    *(rB) = rM;                        \
+    *(uB) = uM - (nx*uM+ny*vM)*nx;     \
+    *(vB) = vM - (nx*uM+ny*vM)*ny;     \
+    *(s11B) = s11M;                    \
+    *(s12B) = s12M;                    \
+    *(s22B) = s22M;                    \
+  }                                    \
+}
+
 // Mesh Deformation boundary
 /* moving wall 1, stationary 2 */
 #define bnsMeshBoundary2D(bc, t, x, y, mx, my) \
@@ -119,8 +147,5 @@ SOFTWARE.
   } else if(bc==3){                          \
     *(mx)=0.0;                               \
     *(my)=0.0;                               \
-  } else if(bc==6){                          \
-    *(mx)=0.0;                               \
-    *(my)=0.0;                               \                                          \
   }                                          \
 }

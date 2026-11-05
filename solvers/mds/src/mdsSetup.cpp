@@ -70,6 +70,7 @@ void mds_t::Setup(platform_t& _platform, mesh_t& _mesh,
 
   //setup boundary flags and make mask and masked ogs
   BoundarySetup();
+  SetupDiffusionCoefficient();
 
   // OCCA build stuff
   properties_t kernelInfo = mesh.props; //copy base occa properties
