@@ -138,6 +138,12 @@ SOFTWARE.
   } // end element loop
 }   // end kernel aleRhsTri2D
 
+/* Dirichlet lifting for the Laplacian mesh-velocity solve:
+   rhs -= gamma_e * S_e * q_B, with q_B the boundary data at nodes with bc>0.
+   p_NblockV elements per thread block (one thread per node) instead of one
+   element per block; the previous version is kept in bnsAleRhsTri2D_orig.okl.
+   Nodes with bc>0 are face nodes, so loading q_B per volume node gives the
+   same q_B as the old face-node loop.                                        */
 @kernel void aleRhsLaplaceTri2D(const dlong Nelements,
                         @restrict const  dfloat *  wJ,
                         @restrict const  dfloat *  ggeo,
@@ -157,70 +163,56 @@ SOFTWARE.
                         @restrict dfloat        *  rhsy,
                         @restrict dfloat        *  rhsz){
 
-  for(int e=0;e<Nelements;e++;@outer(0)){
-    @shared dfloat s_qx[p_Np];
-    @shared dfloat s_qy[p_Np];
-    // @shared dfloat s_q[p_Nfields][p_Np];
-    // @shared dfloat s_ndq[p_Nfp*p_Nfaces];
+  for(dlong eo=0;eo<Nelements;eo+=p_NblockV;@outer(0)){
+    @shared dfloat s_qx[p_NblockV][p_Np];
+    @shared dfloat s_qy[p_NblockV][p_Np];
 
-    for(int n=0;n<p_Nmax;++n;@inner(0)){
-      if(n<p_Np){
-        s_qx[n] = 0.;
-        s_qy[n] = 0.;
-      }
-    }
+    for(int es=0;es<p_NblockV;++es;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        const dlong e = eo+es;
+        if(e<Nelements){
+          const dlong id = n + e*p_Np;
+          const int bc = mapB[id];
 
-
-    for(int n=0;n<p_Nmax;++n;@inner(0)){
-      if(n<p_NfacesNfp){
-        const int id  = n + e*p_Nfaces*p_Nfp;
-        const int idM = vmapM[id];
-        const int nid = idM%p_Np;
-
-        dfloat mxP=0., myP=0.;
-
-        const int bc = mapB[idM];
-        if(bc>0) {
-          bnsMeshBoundary2D(bc, t, x[idM], y[idM], 
-                                  &mxP, &myP);
+          dfloat mxP=0., myP=0.;
+          if(bc>0) {
+            bnsMeshBoundary2D(bc, t, x[id], y[id], &mxP, &myP);
+          }
+          s_qx[es][n] = mxP;
+          s_qy[es][n] = myP;
         }
-        s_qx[nid] = mxP;
-        s_qy[nid] = myP;
       }
     }
 
+    for(int es=0;es<p_NblockV;++es;@inner(1)){
+      for(int n=0;n<p_Np;++n;@inner(0)){
+        const dlong e = eo+es;
+        if(e<Nelements){
+          const dlong gid = e*p_Nggeo;
+          const dfloat Grr = ggeo[gid + p_G00ID];
+          const dfloat Grs = ggeo[gid + p_G01ID];
+          const dfloat Gss = ggeo[gid + p_G11ID];
 
-    for(int n=0;n<p_Nmax;++n;@inner(0)){
-      if(n<p_Np){
-        //volume Dirichlet data
-        const int gid = e*p_Nggeo;
-        const dfloat Grr = ggeo[gid + p_G00ID];
-        const dfloat Grs = ggeo[gid + p_G01ID];
-        const dfloat Gss = ggeo[gid + p_G11ID];
+          dfloat qrr_x = 0., qrs_x = 0., qss_x = 0.;
+          dfloat qrr_y = 0., qrs_y = 0., qss_y = 0.;
 
-        // contributions for u
-        dfloat qrr_x = 0.;
-        dfloat qrs_x = 0.;
-        dfloat qss_x = 0.;
-
-        // contributions for v
-        dfloat qrr_y = 0.;
-        dfloat qrs_y = 0.;
-        dfloat qss_y = 0.;
-        #pragma unroll p_Np
+          #pragma unroll p_Np
           for (int k=0;k<p_Np;k++) {
-            qrr_x += S[n+k*p_Np+0*p_Np*p_Np]*s_qx[k];
-            qrs_x += S[n+k*p_Np+1*p_Np*p_Np]*s_qx[k];
-            qss_x += S[n+k*p_Np+2*p_Np*p_Np]*s_qx[k];
+            const dfloat Srr = S[n+k*p_Np+0*p_Np*p_Np];
+            const dfloat Srs = S[n+k*p_Np+1*p_Np*p_Np];
+            const dfloat Sss = S[n+k*p_Np+2*p_Np*p_Np];
+            const dfloat qx  = s_qx[es][k];
+            const dfloat qy  = s_qy[es][k];
 
-            qrr_y += S[n+k*p_Np+0*p_Np*p_Np]*s_qy[k];
-            qrs_y += S[n+k*p_Np+1*p_Np*p_Np]*s_qy[k];
-            qss_y += S[n+k*p_Np+2*p_Np*p_Np]*s_qy[k];
+            qrr_x += Srr*qx;  qrs_x += Srs*qx;  qss_x += Sss*qx;
+            qrr_y += Srr*qy;  qrs_y += Srs*qy;  qss_y += Sss*qy;
           }
 
-        const dlong id = n + e*p_Np;
-        rhsx[id] -= gamma[e] * (Grr*qrr_x+Grs*qrs_x+Gss*qss_x);
-        rhsy[id] -= gamma[e] * (Grr*qrr_y+Grs*qrs_y+Gss*qss_y);
+          const dfloat g = gamma[e];
+          const dlong id = n + e*p_Np;
+          rhsx[id] -= g * (Grr*qrr_x+Grs*qrs_x+Gss*qss_x);
+          rhsy[id] -= g * (Grr*qrr_y+Grs*qrs_y+Gss*qss_y);
+        }
       }
     }
   }
@@ -271,6 +263,10 @@ SOFTWARE.
 }   // end kernel aleBCLinElasticTri2D
 
 
+/* Overwrite the solved velocity with the boundary data at nodes with bc>0,
+   then copy it into the vertex-velocity array rhsX ([element][field][node]).
+   One flat loop over all nodes, 256 threads per block; the old version (two
+   launches with p_Np threads per block) is kept in bnsAleRhsTri2D_orig.okl. */
 @kernel void aleBCLaplaceTri2D(const int Nelements,
                                @restrict const dfloat * x,
                                @restrict const dfloat * y,
@@ -282,33 +278,21 @@ SOFTWARE.
                                @restrict dfloat  * qy,
                                @restrict dfloat  * qz){
 
-  for(int e=0;e<Nelements;e++;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
+  for(dlong id=0;id<Nelements*p_Np;++id;@tile(256,@outer(0),@inner(0))){
+    const dlong e = id/p_Np;
+    const int   n = id%p_Np;
+    const int  bc = mapB[id];
 
-      // const int id  = n*p_Nfields+e*p_Np*p_Nfields;
-      const int id  = n+e*p_Np;
-      const int bc  = mapB[id];
+    dfloat mx = qx[id], my = qy[id];
 
-      dfloat mxP=0., myP=0.;
-
-      if(bc>0){
-        bnsMeshBoundary2D(bc, t, x[id], y[id],
-                                &mxP, &myP);
-        qx[id] = mxP;
-        qy[id] = myP;
-      }
+    if(bc>0){
+      mx = 0.; my = 0.;
+      bnsMeshBoundary2D(bc, t, x[id], y[id], &mx, &my);
+      qx[id] = mx;
+      qy[id] = my;
     }
-  }
 
-  // second outer loop to change the order
-  for(int e=0;e<Nelements;e++;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-
-      const dlong id  = n+e*p_Np*2;
-      const dlong iid = n+e*p_Np;
-
-      rhsX[id+0*p_Np] = qx[iid];  // X velocity
-      rhsX[id+1*p_Np] = qy[iid];  // Y Velocity
-    }
+    rhsX[n + 0*p_Np + e*p_Np*2] = mx;  // X velocity
+    rhsX[n + 1*p_Np + e*p_Np*2] = my;  // Y velocity
   }
 }   // end kernel aleBCLaplaceTri2D
