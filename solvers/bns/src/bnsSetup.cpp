@@ -187,6 +187,9 @@ void bns_t::Setup(platform_t& _platform, mesh_t& _mesh,
   time_volume = 0.f, time_surface = 0.f, time_cubature = 0.f, time_meshDeform = 0.f;
   time_volumePml = 0.f, time_surfacePml = 0.f, time_cubaturePml = 0.f;
   time_vgeo = 0.f, time_sgeo = 0.f, time_updateX = 0.f;
+  time_mmSetup = 0.0, time_mmRhs = 0.0, time_mmGather = 0.0, time_mmSolve = 0.0;
+  time_mmScatter = 0.0, time_mmBC = 0.0, time_mmInterp = 0.0;
+  moveMeshTiming = settings.compareSetting("MOVEMESH TIMING", "TRUE");
 
   solver_max_iter = 0;
   

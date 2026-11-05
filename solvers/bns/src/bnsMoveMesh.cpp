@@ -27,9 +27,18 @@ SOFTWARE.
 #include "bns.hpp"
 #define PI 3.14159265
 
+/* Charge the time since lap to t and restart lap (see [MOVEMESH TIMING]). */
+void bns_t::MoveMeshLap(double& t, timePoint_t& lap){
+  if (!moveMeshTiming) return;
+  timePoint_t now = PlatformTime(platform);
+  t += ElapsedTime(lap, now);
+  lap = now;
+}
+
 void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, const dfloat T){
 
   timePoint_t startMoveMesh = GlobalPlatformTime(platform);
+  timePoint_t lap = startMoveMesh;
   switch(testCase){
 
   default:
@@ -144,6 +153,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
         o_Gvz    = platform.reserve<dfloat>(mdsSolver.Ndofs+mdsSolver.Nhalo);
       }
     }
+    MoveMeshLap(time_mmSetup, lap);
 
     aleRhsKernel(mesh.Nelements,
                  meshN1.o_wJ,
@@ -163,6 +173,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                  o_rhsVx,
                  o_rhsVy,
                  o_rhsVz);
+    MoveMeshLap(time_mmRhs, lap);
 
     int maxIter = 5000;
     int verbose = 0;
@@ -180,6 +191,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
         mdsSolver.ogsMasked.Gather(o_GrhsVz, o_rhsVz, 1, ogs::Add, ogs::Trans);
         mdsSolver.ogsMasked.Gather(o_Gvz, o_vzL, 1, ogs::Add, ogs::NoTrans);
       }
+      MoveMeshLap(time_mmGather, lap);
 
       Niter  = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
       int Nitery = mdsSolver.Solve(mdsLinearSolver, o_Gvy, o_GrhsVy, mdsTOL, maxIter, verbose);
@@ -187,6 +199,8 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
       if(mesh.dim==3){
         int Niterz = mdsSolver.Solve(mdsLinearSolver, o_Gvz, o_GrhsVz, mdsTOL, maxIter, verbose);
       }
+      MoveMeshLap(time_mmSolve, lap);
+
       mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, 1, ogs::NoTrans);
       mdsSolver.ogsMasked.Scatter(o_vyL, o_Gvy, 1, ogs::NoTrans);
       o_GrhsVx.free(); o_Gvx.free();
@@ -198,11 +212,15 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
 
 
     } else if(mdsSolver.deform_linElastic){
+      MoveMeshLap(time_mmGather, lap);
+
       Niter = mdsSolver.Solve(mdsLinearSolver, o_Gvx, o_GrhsVx, mdsTOL, maxIter, verbose);
+      MoveMeshLap(time_mmSolve, lap);
       // printf("Total Number of Iterations: %d\n", Niter);
       mdsSolver.ogsMasked.Scatter(o_vxL, o_Gvx, mdsNfields, ogs::NoTrans);
       o_GrhsVx.free(); o_Gvx.free();      
     }
+    MoveMeshLap(time_mmScatter, lap);
 
     aleBCKernel(meshN1.Nelements,
                 meshN1.o_x,
@@ -214,6 +232,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                 o_vxL, 
                 o_vyL,
                 o_vzL); 
+    MoveMeshLap(time_mmBC, lap);
 
     break;
 
@@ -282,6 +301,7 @@ void bns_t::MoveMesh(deviceMemory<dfloat>& o_Vx, deviceMemory<dfloat>& o_rhsX, c
                          o_meshVelx,
                          o_meshVely,  
                          o_meshVelz);  
+  MoveMeshLap(time_mmInterp, lap);
 
   timePoint_t endMoveMesh = GlobalPlatformTime(platform);
   time_meshDeform += ElapsedTime(startMoveMesh, endMoveMesh);

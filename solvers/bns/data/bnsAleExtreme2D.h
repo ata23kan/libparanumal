@@ -29,10 +29,14 @@ SOFTWARE.
 #define UBAR 0.1
 #define VBAR 0.0
 
-//Heaving Airfoil
-#define H 0.08
-#define FREQ 0.01
+// Flexible Rod Parameters
+#define D_SQ 1.0          // Size of the stationary square
+#define L_ROD 4.0         // Length of the moving rod
+#define A_MAX 1.5         // Scaled Amplitude
+#define FREQ 0.010          // Scaled Frequency
 #define PI 3.14159265
+
+#define X_ROOT (D_SQ / 2.0)
 
 // Initial conditions
 #define bnsInitialConditions2D(c, nu, t, x, y, r, u, v, s11, s12, s22) \
@@ -44,17 +48,6 @@ SOFTWARE.
   *(s12) = 0.0;                           \
   *(s22) = 0.0;                           \
 }
-
-// // Initial conditions
-// #define bnsInitialConditions2D(c, nu, t, x, y, r, u, v, s11, s12, s22) \
-// {                                         \
-//   *(r) = 1 + exp(-3*(x*x+y*y));           \
-//   *(u) = exp(-3*(x*x+y*y));               \
-//   *(v) = exp(-3*(x*x+y*y));               \
-//   *(s11) = 0.0;                           \
-//   *(s12) = 0.0;                           \
-//   *(s22) = 0.0;                           \
-// }
 
 // Body force
 #define bnsBodyForce2D(c, nu, t, x, y, r, u, v, fx, fy) \
@@ -70,7 +63,7 @@ SOFTWARE.
                                 rM, uM, vM, s11M, s12M, s22M, \
                                 rB, uB, vB, s11B, s12B, s22B) \
 {                                      \
-  if(bc==1){                           \
+  if(bc==1||bc==10){                           \
     *(rB) = rM;                        \
     *(uB) = 0.0;                       \
     *(vB) = 0.0;                       \
@@ -109,7 +102,7 @@ SOFTWARE.
                                 rM, uM, vM, s11M, s12M, s22M, \
                                 rB, uB, vB, s11B, s12B, s22B) \
 {                                      \
-  if(bc==1){                           \
+  if(bc==1||bc==10){                           \
     *(rB) = rM;                        \
     *(uB) = mVx;                       \
     *(vB) = mVy;                       \
@@ -145,15 +138,13 @@ SOFTWARE.
 #define bnsMeshBoundary2D(bc, t, x, y, mx, my) \
 { \
   if(bc==1){                                 \
+    dfloat s_norm = (x - X_ROOT) / L_ROD;    \
     *(mx)=0.0;                               \
-    *(my)=H*2*PI*FREQ*cos(2*PI*FREQ*t);      \
+    *(my)=A_MAX*((x-0.5)/4.0)*2.0*PI*FREQ*cos(2.0*PI*FREQ*t);      \
   } else if(bc==2){                          \
     *(mx)=0.0;                               \
     *(my)=0.0;                               \
   } else if(bc==3){                          \
-    *(mx)=0.0;                               \
-    *(my)=0.0;                               \
-  } else if(bc==6){                          \
     *(mx)=0.0;                               \
     *(my)=0.0;                               \
   }                                          \

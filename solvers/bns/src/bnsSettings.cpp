@@ -97,6 +97,11 @@ bnsSettings_t::bnsSettings_t(comm_t& _comm):
              "ALE Test Case",
              {"BOX", "PLUNGINGAIRFOIL", "TGV", "CARANGIFORMFISH", "SOLVEMESH"});
 
+  newSetting("MOVEMESH TIMING",
+             "FALSE",
+             "Time each phase of MoveMesh (adds device syncs; profiling only)",
+             {"TRUE", "FALSE"});
+
   mdsAddSettings(*this, "MDS ");
   parAlmond::AddSettings(*this, "MDS ");
   
@@ -119,6 +124,7 @@ void bnsSettings_t::report() {
     reportSetting("FINAL TIME");
     reportSetting("OUTPUT INTERVAL");
     reportSetting("OUTPUT TO FILE");
+    reportSetting("MOVEMESH TIMING");
     reportSetting("OUTPUT FILE NAME");
   }
 }

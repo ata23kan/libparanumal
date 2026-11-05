@@ -1,0 +1,153 @@
+[FORMAT
+2.0
+
+[DATA FILE]
+data/bnsAleModerate2D.h
+
+[ALE TEST]
+SOLVEMESH
+
+[MESH FILE]
+mesh/flexible_rod_pml_fine.msh
+
+[MESH DIMENSION]
+2
+
+[ELEMENT TYPE] # number of edges
+3
+
+[POLYNOMIAL DEGREE]
+3
+
+[THREAD MODEL]
+CUDA
+
+[PLATFORM NUMBER]
+0
+
+[DEVICE NUMBER]
+0
+
+[VISCOSITY]
+0.001
+
+[SPEED OF SOUND]
+1.0
+
+[PML PROFILE ORDER]
+4
+
+[PML SIGMAX MAX]
+50
+
+[PML SIGMAY MAX]
+50
+
+[PML INTEGRATION]
+COLLOCATION
+
+[TIME INTEGRATOR]
+SARK4
+
+[START TIME]
+0
+
+[FINAL TIME]
+10
+#0.1
+
+[OUTPUT INTERVAL]
+0.1
+
+[OUTPUT TO FILE]
+FALSE
+
+[OUTPUT FILE NAME]
+/gpfs/scratch/etur79/performance/ig_tests/JacModerate_1e3_extrap
+
+
+#################################################
+################## MDS Options ##################
+#################################################
+
+# can be PCG, FPCG, NBPCG, NBFPCG, PGMRES or PMINRES
+[MDS LINEAR SOLVER]
+PCG
+#NBPCG
+
+# ABS/REL-INITRESID  ->  TOL = tol^2 * ||b - A x0||^2
+# ABS/REL-RHS-2NORM  ->  TOL = tol^2 * ||b||^2
+# Use RHS-2NORM whenever the initial guess is not ZERO. With INITRESID a better
+# x0 shrinks ||r0|| and tightens the target by exactly the same factor, so
+# initial-guess reuse buys nothing and the strategies cannot be compared.
+
+[MDS LINEAR SOLVER STOPPING CRITERION]
+ABS/REL-RHS-2NORM
+#ABS/REL-INITRESID
+
+[MDS SOLVER TOLERANCE]
+1.0e-3
+
+###########################################
+
+############# Initial guess ###############
+
+# ZERO    - always start from 0 (the previous hard-wired behaviour)
+# LAST    - start from the previous solution of this (RK stage, direction)
+# CLASSIC - Fischer (1998) projection over a history of previous solutions
+# QR      - rolling-QR variant of the same projection
+# EXTRAP  - polynomial extrapolation in time over previous solutions
+
+[MDS INITIAL GUESS STRATEGY]
+#LAST
+#ZERO
+#QR
+#CLASSIC
+EXTRAP
+
+# Required (>0) for CLASSIC, QR and EXTRAP; unused by ZERO and LAST.
+# Costs Ndofs*dim dfloats per (stage,direction) solver -- twice that for
+# CLASSIC/QR, which store both a RHS basis and a solution basis.
+[MDS INITIAL GUESS HISTORY SPACE DIMENSION]
+10
+
+# EXTRAP only
+[MDS INITIAL GUESS EXTRAP DEGREE]
+3
+
+# EXTRAP only: MINNORM or CPQR
+[MDS INITIAL GUESS EXTRAP COEFFS METHOD]
+MINNORM
+
+###########################################
+
+# Linear Eqricity does not work with PML
+[MDS DEFORMATION METHOD]
+LAPLACIAN
+
+# can be NONE, JACOBI, PARALMOND (Only for Laplacian deformation)
+[MDS PRECONDITIONER]
+JACOBI
+
+###########################################
+
+########## ParAlmond Options ##############
+
+# can be KCYCLE, or VCYCLE
+# can add the EXACT and NONSYM option
+[MDS PARALMOND CYCLE]
+VCYCLE
+
+# can be SMOOTHED or UNSMOOTHED
+[MDS PARALMOND AGGREGATION]
+SMOOTHED
+
+# can be DAMPEDJACOBI or CHEBYSHEV
+[MDS PARALMOND SMOOTHER]
+CHEBYSHEV
+
+# can be any integer >0
+[MDS PARALMOND CHEBYSHEV DEGREE]
+2
+
+###########################################

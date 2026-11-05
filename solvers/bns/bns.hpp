@@ -130,6 +130,12 @@ public:
   dfloat time_volume, time_surface, time_cubature, time_meshDeform;
   dfloat time_volumePml, time_surfacePml, time_cubaturePml;
   dfloat time_vgeo, time_sgeo, time_updateX;
+
+  /* MoveMesh phase timers, filled only when [MOVEMESH TIMING] is TRUE */
+  int moveMeshTiming;
+  double time_mmSetup, time_mmRhs, time_mmGather, time_mmSolve;
+  double time_mmScatter, time_mmBC, time_mmInterp;
+  void MoveMeshLap(double& t, timePoint_t& lap);
   int solver_max_iter;
   deviceMemory<dfloat> o_wJ0; // Initial Jacobian field for relative deformation calculation
   kernel_t relativeJacobianKernel;

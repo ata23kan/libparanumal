@@ -1,5 +1,5 @@
-lc_box = 0.25;    // Mesh size far field
-lc_wall = 0.025;  // Mesh size near structure
+lc_box = 0.15;    // Mesh size far field
+lc_wall = 0.015;  // Mesh size near structure
 
 // Geometry Dimensions
 D = 1;   // Square side length
@@ -126,9 +126,9 @@ Plane Surface(11) = {10};
 
 // Physical Groups
 Physical Line("Wall", 1)    = {3, 4, 5};
-//Physical Line("Wall", 1)    = {1, 2, 3, 4, 5, 6, 7, 8};
 Physical Line("Square", 10) = {2, 6, 7, 8, 1};
 Physical Line("Outflow", 3) = {13, 16, 30, 24, 21, 31, 25, 28, 32, 20, 17, 29};
+Physical Line("BoundingBox", 6)  = {9, 10, 11, 12};
 
 Physical Surface("Interior", 9)  = {3};
 Physical Surface("XPML", 100)    = {8, 10};

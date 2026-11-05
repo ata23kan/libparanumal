@@ -2,37 +2,19 @@
 2.0
 
 [DATA FILE]
-data/bnsAle2D.h
+data/bnsAleMild2D.h
 
 [ALE TEST]
-PLUNGINGAIRFOIL
+SOLVEMESH
 
 [MESH FILE]
-#mesh/naca0012.msh
+mesh/flexible_rod_pml_fine.msh
 
 [MESH DIMENSION]
 2
 
 [ELEMENT TYPE] # number of edges
 3
-
-[BOX NX]
-40
-
-[BOX NY]
-40
-
-[BOX NZ]
-20
-
-[BOX DIMX]
-20
-
-[BOX DIMY]
-20
-
-[BOX BOUNDARY FLAG]
-1
 
 [POLYNOMIAL DEGREE]
 3
@@ -65,14 +47,13 @@ CUDA
 COLLOCATION
 
 [TIME INTEGRATOR]
-#LSERK4
 SARK4
 
 [START TIME]
 0
 
 [FINAL TIME]
-100
+20
 
 [OUTPUT INTERVAL]
 1
@@ -81,7 +62,7 @@ SARK4
 TRUE
 
 [OUTPUT FILE NAME]
-bns
+bnsMild_None
 
 
 #################################################
@@ -97,8 +78,10 @@ PCG
 LAPLACIAN
 #LINEARELASTIC
 
-# can be NONE, PARALMOND (Only for Laplacian deformation)
+# can be NONE, JACOBI, PARALMOND (Only for Laplacian deformation)
 [MDS PRECONDITIONER]
+#PARALMOND
+#JACOBI
 NONE
 
 ###########################################

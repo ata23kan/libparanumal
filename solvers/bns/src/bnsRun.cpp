@@ -96,6 +96,25 @@ void bns_t::Run(){
   printf("Total Sgeo Kernel time: %.4e\n", time_sgeo);
   printf("Total UpdateX Kernel time: %.4e\n", time_updateX);
 
+  if (moveMeshTiming) {
+    // MoveMesh phases (see bns_t::MoveMesh), slowest rank
+    static const char* names[7] = {"setup (reserve + zero)", "aleRhsKernel",
+                                   "gather", "linear solves",
+                                   "scatter + free", "aleBCKernel",
+                                   "velocity interpolation"};
+    memory<double> mm(7);
+    mm[0] = time_mmSetup;   mm[1] = time_mmRhs; mm[2] = time_mmGather;
+    mm[3] = time_mmSolve;   mm[4] = time_mmScatter;
+    mm[5] = time_mmBC;      mm[6] = time_mmInterp;
+    mesh.comm.Allreduce(mm, Comm::Max);
+
+    if (mesh.rank==0) {
+      printf("MoveMesh phase times (max over ranks):\n");
+      for (int n=0;n<7;++n)
+        printf("  %-28s %12.4e\n", names[n], mm[n]);
+    }
+  }
+
   // output norm of final solution
   {
     //compute q.M*q

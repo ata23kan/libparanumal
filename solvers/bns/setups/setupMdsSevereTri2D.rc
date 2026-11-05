@@ -2,37 +2,19 @@
 2.0
 
 [DATA FILE]
-data/bnsAleConstant2D.h
+data/bnsAleSevere2D.h
 
 [ALE TEST]
-BOX
+SOLVEMESH
 
 [MESH FILE]
-BOX
+mesh/flexible_rod_pml_fine.msh
 
 [MESH DIMENSION]
 2
 
 [ELEMENT TYPE] # number of edges
 3
-
-[BOX NX]
-10
-
-[BOX NY]
-10
-
-[BOX NZ]
-20
-
-[BOX DIMX]
-20
-
-[BOX DIMY]
-20
-
-[BOX BOUNDARY FLAG]
--1
 
 [POLYNOMIAL DEGREE]
 3
@@ -50,7 +32,7 @@ CUDA
 0.001
 
 [SPEED OF SOUND]
-14.0
+1.0
 
 [PML PROFILE ORDER]
 4
@@ -62,17 +44,16 @@ CUDA
 50
 
 [PML INTEGRATION]
-CUBATURE
+COLLOCATION
 
 [TIME INTEGRATOR]
-#LSERK4
 SARK4
 
 [START TIME]
 0
 
 [FINAL TIME]
-10
+67
 
 [OUTPUT INTERVAL]
 1
@@ -81,7 +62,7 @@ SARK4
 TRUE
 
 [OUTPUT FILE NAME]
-bns
+bnsSevere
 
 
 #################################################
@@ -95,12 +76,12 @@ PCG
 # Linear Elasticity does not work with PML
 [MDS DEFORMATION METHOD]
 LAPLACIAN
-#LINEARELASTIC
 
-# can be NONE, PARALMOND (Only for Laplacian deformation)
+# can be NONE, JACOBI, PARALMOND (Only for Laplacian deformation)
 [MDS PRECONDITIONER]
-NONE
-#PARALMOND
+PARALMOND
+#JACOBI
+#NONE
 
 ###########################################
 
