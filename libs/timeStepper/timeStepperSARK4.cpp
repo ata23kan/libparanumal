@@ -31,6 +31,12 @@ SOFTWARE.
 
 #include "timer.hpp"
 
+/* ALE time stepping mode switch:
+     1 -> fixed time step (dt from the settings file is never changed)
+     0 -> original libParanumal adaptive stepping with PID error control
+   Only sark4::RunWithAle is affected; sark4::Run is always adaptive. */
+#define SARK4_ALE_FIXED_DT 1
+
 namespace libp {
 
 namespace TimeStepper {
@@ -372,6 +378,13 @@ void sark4::RunWithAle(solver_t& solver,
 
   int tstep=0, allStep=0;
 
+#if SARK4_ALE_FIXED_DT
+  /* Fixed time step: dt never changes from step to step. Remember the
+     requested dt so it can be restored after a step that had to be
+     shortened (final step, or an output mini-step). */
+  const dfloat dtFixed = dt;
+#endif
+
   //Compute Butcher Tableau
   UpdateCoefficients();
 
@@ -385,17 +398,22 @@ void sark4::RunWithAle(solver_t& solver,
     //check for final timestep
     if (time+dt > end){
       dt = end-time;
+
+#if SARK4_ALE_FIXED_DT
+      //Compute Butcher Tableau (dt changed)
+      UpdateCoefficients();
+#endif
     }
 
     ALEStep(solver, o_q, o_VX, o_pmlq,
             o_rkq, o_rkVX, o_rkpmlq, o_rkerr,
             time, dt);
 
+#if SARK4_ALE_FIXED_DT
+    { //fixed dt: the step is always accepted
+#else
     // compute Dopri estimator
     dfloat err = Estimater(o_q, o_rkq, o_rkerr);
-
-    // dfloat err = 1e-5;  // Remove the adaptive stepping
-    // dfloat dtnew = dt;
 
     // build controller
     dfloat fac1 = pow(err,exp1);
@@ -405,6 +423,7 @@ void sark4::RunWithAle(solver_t& solver,
     dfloat dtnew = dt/fac;
 
     if (err<1.0) { //dt is accepted
+#endif
 
       // check for output during this step and do a mini-step
       if (time<outputTime && time+dt>=outputTime) {
@@ -444,6 +463,11 @@ void sark4::RunWithAle(solver_t& solver,
         // restore time step
         dt = savedt;
 
+#if SARK4_ALE_FIXED_DT
+        //Compute Butcher Tableau (dt changed back)
+        UpdateCoefficients();
+#endif
+
         // increment next output time
         outputTime += outputInterval;
 
@@ -465,11 +489,23 @@ void sark4::RunWithAle(solver_t& solver,
       time += dt;
       while (time>outputTime) outputTime+= outputInterval; //catch up next output in case dt>outputInterval
 
+#if !SARK4_ALE_FIXED_DT
       constexpr dfloat errMax = 1.0e-4;  // hard coded factor ?
       facold = std::max(err,errMax);
+#endif
 
       tstep++;
-    } else {
+    }
+#if SARK4_ALE_FIXED_DT
+    //restore the fixed time step (it may have been shortened above)
+    if (dt!=dtFixed) {
+      dt = dtFixed;
+
+      //Compute Butcher Tableau
+      UpdateCoefficients();
+    }
+#else
+    else {
       dtnew = dt/(std::max(invfactor1,fac1/safe));
       solver.UpdateGeo(o_VX);   // Return the geometric factors to the beginning of the step.
     }
@@ -477,6 +513,7 @@ void sark4::RunWithAle(solver_t& solver,
 
     //Compute Butcher Tableau
     UpdateCoefficients();
+#endif
 
     allStep++;
   }
